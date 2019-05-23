@@ -25,8 +25,6 @@ SCRIPTNAME="cqpweb-instabox.sh"
 # 59 and below
 # - Initial development
 
-# TODO:
-
 
 ################################################################################
 # SCRIPT CONFIGURATION
