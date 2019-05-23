@@ -86,7 +86,7 @@ SECURITYSW=1        # Install security software. Highly recommended for server i
      UFWSW=1        # Install and configure Universal FireWall (UFW). Important for security!
      UPSSW=0        # Install and configure software for APC BackUPS Pro 900 UPS (051d:0002)
 FAIL2BANSW=0        # Install and configure fail2ban. Important for security! But install this last, after you've confirmed everything works.
-  WHITELISTEDIPS="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 190.47.255.254 146.155.44.223 146.155.44.196 201.214.108.75" # IP addresses to whitelist (never ban) in fail2ban. Separate with space.
+  WHITELISTEDIPS="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16" # IP addresses to whitelist (never ban) in fail2ban. Separate with space.
 
 # ADDITIONAL LINGUISTIC SOFTWARE: HEADLESS SERVER OR GUI
      FREELINGSW=0           # Install FreeLing tagger.
