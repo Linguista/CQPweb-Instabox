@@ -34,3 +34,6 @@ You should now have CQPweb running on the IP address the script provides you.
 5. Reboot.
 
 You should now have CQPweb running on the IP address the script provides you.
+
+# Known issues
+While the Postfix mail agent works just fine, the PHP mail module that CQPweb uses does not.
