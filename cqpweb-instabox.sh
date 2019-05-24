@@ -3,8 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-05-22
-# VERSION:  60
+# DATE:     2019-05-23
+# VERSION:  61
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes a bare-bones install of Ubuntu 18.04 LTS and sets up Open Corpus
@@ -20,10 +20,23 @@ SCRIPTNAME="cqpweb-instabox.sh"
 #              While I've made every effort to make it work properly, it comes with no guarantees and
 #              no warranties. Bug reports are most welcome!
 
-# CHANGELOG:
+# CHANGE LOG:
 #
-# 59 and below
-# - Initial development
+# v61
+# - Added: CQPweb:          Installation of php-json module.
+#                           Upload of favicon.ico.
+# - Added: Server Software: Installation of 'ripgrep' and 'fd'.
+# - Added: Bash config:     Aliases for viewing various logs.
+#
+# v60
+# - Initial release.
+#
+# v59 and below
+# - Pre-release development.
+
+# TODO:
+# - Properly configure PHP mail server. As it stands, it fails to send e-mails. Can it be made to use Postfix?
+
 
 
 ################################################################################
@@ -74,6 +87,8 @@ ADMINUSER="YOUR_INFO_HERE"  # CQPweb administrator usernames. Separate multiple 
   DBPWD="cqpweb"            # Password for MYSQL database and webuser
   CQPMAKENEWDB=1            # Delete existing database and make a new one? (NECESSARY for new installs; normally undesirable otherwise).
   CQPWEBNUKEOLD=0           # Delete previously downloaded CQPweb files before downloading and installing again? Not normally needed!
+  FAVICONUPLD=1             # Upload favicon.ico to root of website?
+   FAVICONURL="YOUR_INFO_HERE" # Source URL of favicon.ico.
 
 # CORPORA
 CORPDICKENS=1       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
@@ -81,15 +96,15 @@ CORPDICKENS=1       # Install the Dickens SAMPLE CORPUS. Requires CWB already be
 # ADDITIONAL SYSTEM SOFTWARE
     MAILSW=1        # Install and configure a mail server.
 SECURITYSW=1        # Install security software. Highly recommended for server install.
-     UFWSW=1        # Install and configure Uncomplicated FireWall (UFW). Important for security!
+     UFWSW=1        # Install and configure Universal FireWall (UFW). Important for security!
      UPSSW=0        # Install and configure software for APC BackUPS Pro 900 UPS (051d:0002)
 FAIL2BANSW=0        # Install and configure fail2ban. Important for security! But install this last, after you've confirmed everything works.
-  WHITELISTEDIPS="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 190.47.255.254 146.155.44.223 146.155.44.196 201.214.108.75" # IP addresses to whitelist (never ban) in fail2ban. Separate with space.
+WHITELISTEDIPS="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16" # IP addresses to whitelist (never ban) in fail2ban. Separate with space.
 
 # ADDITIONAL LINGUISTIC SOFTWARE: HEADLESS SERVER OR GUI
      FREELINGSW=0           # Install FreeLing tagger.
        FREELINGESCLMODS=0   # Modify FreeLing's Chilean Spanish install.
-        FREELINGNUKEOLD=0   # Delete all downloaded FreeLing files before installing again.
+       FREELINGNUKEOLD=0    # Delete all downloaded FreeLing files before installing again.
 PRAATHEADLESSSW=0           # Install headless Praat phonetic analysis software.
      VISIDATASW=0           # Install Visidata, an amazing TUI tool to manipulate and process CSV files.
 
@@ -367,15 +382,12 @@ if [[ "$CONFIGBASH" = 1 ]]; then
 	# ALIASES
 	alias ...='cd ../../../'
 	alias ..='cd ..'
-	alias alog='tail -f -n 25 /var/log/auth.log'
-	alias aplog='tail -f -n 25 /var/log/apache2/error.log'
 	alias audit='sudo lynis audit system --quick'
 	alias cd..='cd ..'
 	alias df='df -h'
 	alias dm='dmesg -H'
 	alias egrep='egrep --color=auto -i'
 	alias fgrep='fgrep --color=auto -i'
-	alias flog='tail -f -n 25 /var/log/fail2ban.log'
 	alias getip='wget -qO - http://wtfismyip.com/text'
 	alias grep='grep --color=auto -i'
 	alias j='jobs -l'
@@ -401,10 +413,20 @@ if [[ "$CONFIGBASH" = 1 ]]; then
 	alias sagu='sudo apt update'
 	alias sagug='sudo apt upgrade'
 	alias sas='sudo apt search'
-	alias slog='tail -f -n 25 /var/log/syslog'
 	alias sn='sudo nano'
 	alias ugr='sudo apt list --upgradable'
+
+	# ALIASES FOR VIEWING LOGFILES
+	alias alog='tail -f -n 25 /var/log/auth.log'
+	alias apalog='tail -f -n 25 /var/log/apache2/access.log'
+	alias apelog='tail -f -n 25 /var/log/apache2/error.log'
+	alias flog='tail -f -n 25 /var/log/fail2ban.log'
+	alias klog='tail -f -n 25 /var/log/kern.log'
+	alias mlog='tail -f /var/log/mail.log'
+	alias mylog='tail -f /var/log/mysql/error.log'
+	alias slog='tail -f -n 25 /var/log/syslog'
 	alias ulog='tail -f -n 15 /var/log/ufw.log'
+	alias upslog='tail -f -n 15 /var/log/apcupsd.events'
 
 	# LINGUISTIC THINGS
 	alias cqp='cqp -eC'
@@ -929,6 +951,34 @@ if [[ "$SERVERSW" = 1 ]]; then
     sudo -H pip3 install --system glances
     sudo -H pip3 install --system s-tui
 
+    # INSTALL RIPGREP (https://github.com/BurntSushi/ripgrep/)
+    sudo mkdir -p /tmp/rg               # MAKE TEMP DIR
+    sudo chmod -R ugo+rwx /tmp/rg       # CHANGE PERMISSIONS OF TEMP DIR
+    cd /tmp/rg || exit                  # MOVE INTO TEMP DIR
+    # DOWNLOAD THE GITHUB "LATEST" PAGE, WHICH REDIRECTS TO A PAGE WITH THE LATEST VERSION NUMBER IN ITS URL, AND EXTRACT THAT LINE
+    RGLATESTVER=$(aria2c https://github.com/BurntSushi/ripgrep/releases/latest | grep 'Redirecting to')
+    RGLATESTVER="$(sed -r 's/^.+\/tag\///' <<< $RGLATESTVER)"   # STRIP EVERYTHING BUT VERSION NUMBER FROM EXTRACTED LINE
+    # ASSEMBLE THE DEB FILE NAME
+    RGPATH="https://github.com/BurntSushi/ripgrep/releases/download/${RGLATESTVER}"
+    RGFILENAME="ripgrep_${RGLATESTVER}_amd64.deb"
+    curl -LO "${RGPATH}/${RGFILENAME}"  # DOWNLOAD THE DEB FILE
+    sudo dpkg -i "${RGFILENAME}"        # INSTALL THE DEB FILE
+    sudo rm -rf /tmp/rg                 # DELETE THE TMP DIRECTORY AND ITS CONTENTS
+
+    # INSTALL FD
+    sudo mkdir -p /tmp/fd               # MAKE TEMP DIR
+    sudo chmod -R ugo+rwx /tmp/fd       # CHANGE PERMISSIONS OF TEMP DIR
+    cd /tmp/fd || exit                  # MOVE INTO TEMP DIR
+    # DOWNLOAD THE GITHUB "LATEST" PAGE, WHICH REDIRECTS TO A PAGE WITH THE LATEST VERSION NUMBER IN ITS URL, AND EXTRACT THAT LINE
+    FDLATESTVER=$(aria2c https://github.com/sharkdp/fd/releases/latest | grep 'Redirecting to')
+    FDLATESTVER="$(sed -r 's/^.+\/tag\/v//' <<< $FDLATESTVER)"   # STRIP EVERYTHING BUT VERSION NUMBER FROM EXTRACTED LINE
+    # ASSEMBLE THE DEB FILE NAME
+    FDPATH="https://github.com/sharkdp/fd/releases/download/v${FDLATESTVER}"
+    FDFILENAME="fd_${FDLATESTVER}_amd64.deb"
+    curl -LO "${FDPATH}/${FDFILENAME}"  # DOWNLOAD THE DEB FILE
+    sudo dpkg -i "${FDFILENAME}"        # INSTALL THE DEB FILE
+    sudo rm -rf /tmp/fd                 # DELETE THE TMP DIRECTORY AND ITS CONTENTS
+
     echo "${CGRN}${BLD}==========> SERVER SOFTWARE installation finished.${RST}"
     echo ""
 else
@@ -1217,7 +1267,7 @@ if [[ "$CQPWEBSW" = 1 ]]; then
     ####################
     sudo apt update -y
     sudo apt upgrade -y
-    sudo apt install -y --install-recommends apache2 libapache2-mod-php mysql-client mysql-common mysql-server mysql-utilities php-db php-gd php-mysql php-soap php-xml r-base libpng-dev libjpeg-dev libwebp-dev php-zip php-bz2 php-mbstring byobu ttf-ubuntu-font-family
+    sudo apt install -y --install-recommends apache2 byobu libapache2-mod-php libjpeg-dev libpng-dev libwebp-dev mysql-client mysql-common mysql-server mysql-utilities php-bz2 php-db php-gd php-json php-mbstring php-mysql php-soap php-xml php-zip r-base ttf-ubuntu-font-family
 
     ####################
     # USER AND GROUP MANAGEMENT &
@@ -1922,6 +1972,11 @@ EOF
 
 
 
+    # UPLOAD FAVICON TO SERVER
+    if ! [[ "${FAVICONUPLD}" = 0 ]] || [[ "${FAVICONURL}" = "YOUR_INFO_HERE" ]]; then
+        IMAGETARGET="/var/www/html/cqpweb/"
+        wget -P "${IMAGETARGET}" "${FAVICONURL}"
+    fi
 
     echo "${CGRN}${BLD}==========> CQPWEB installation finished.${RST}"
     echo "${CWHT}${BLD}            You will find useful scripts in ${HOME}/bin.${RST}"
