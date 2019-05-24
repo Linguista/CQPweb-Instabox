@@ -3,13 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-<<<<<<< HEAD
 # DATE:     2019-05-23
 # VERSION:  61
-=======
-# DATE:     2019-05-22
-# VERSION:  60
->>>>>>> origin/master
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes a bare-bones install of Ubuntu 18.04 LTS and sets up Open Corpus
@@ -25,7 +20,6 @@ SCRIPTNAME="cqpweb-instabox.sh"
 #              While I've made every effort to make it work properly, it comes with no guarantees and
 #              no warranties. Bug reports are most welcome!
 
-<<<<<<< HEAD
 # CHANGE LOG:
 #
 # v61
@@ -43,14 +37,6 @@ SCRIPTNAME="cqpweb-instabox.sh"
 # TODO:
 # - Properly configure PHP mail server. As it stands, it fails to send e-mails. Can it be made to use Postfix?
 
-=======
-# CHANGELOG:
-#
-# 59 and below
-# - Initial development
-
-# TODO:
->>>>>>> origin/master
 
 
 ################################################################################
@@ -101,11 +87,8 @@ ADMINUSER="YOUR_INFO_HERE"  # CQPweb administrator usernames. Separate multiple 
   DBPWD="cqpweb"            # Password for MYSQL database and webuser
   CQPMAKENEWDB=1            # Delete existing database and make a new one? (NECESSARY for new installs; normally undesirable otherwise).
   CQPWEBNUKEOLD=0           # Delete previously downloaded CQPweb files before downloading and installing again? Not normally needed!
-<<<<<<< HEAD
   FAVICONUPLD=1             # Upload favicon.ico to root of website?
    FAVICONURL="YOUR_INFO_HERE" # Source URL of favicon.ico.
-=======
->>>>>>> origin/master
 
 # CORPORA
 CORPDICKENS=1       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
@@ -116,20 +99,12 @@ SECURITYSW=1        # Install security software. Highly recommended for server i
      UFWSW=1        # Install and configure Universal FireWall (UFW). Important for security!
      UPSSW=0        # Install and configure software for APC BackUPS Pro 900 UPS (051d:0002)
 FAIL2BANSW=0        # Install and configure fail2ban. Important for security! But install this last, after you've confirmed everything works.
-<<<<<<< HEAD
 WHITELISTEDIPS="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16" # IP addresses to whitelist (never ban) in fail2ban. Separate with space.
-=======
-  WHITELISTEDIPS="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16" # IP addresses to whitelist (never ban) in fail2ban. Separate with space.
->>>>>>> origin/master
 
 # ADDITIONAL LINGUISTIC SOFTWARE: HEADLESS SERVER OR GUI
      FREELINGSW=0           # Install FreeLing tagger.
        FREELINGESCLMODS=0   # Modify FreeLing's Chilean Spanish install.
-<<<<<<< HEAD
        FREELINGNUKEOLD=0    # Delete all downloaded FreeLing files before installing again.
-=======
-        FREELINGNUKEOLD=0   # Delete all downloaded FreeLing files before installing again.
->>>>>>> origin/master
 PRAATHEADLESSSW=0           # Install headless Praat phonetic analysis software.
      VISIDATASW=0           # Install Visidata, an amazing TUI tool to manipulate and process CSV files.
 
@@ -407,21 +382,12 @@ if [[ "$CONFIGBASH" = 1 ]]; then
 	# ALIASES
 	alias ...='cd ../../../'
 	alias ..='cd ..'
-<<<<<<< HEAD
-=======
-	alias alog='tail -f -n 25 /var/log/auth.log'
-	alias aplog='tail -f -n 25 /var/log/apache2/error.log'
->>>>>>> origin/master
 	alias audit='sudo lynis audit system --quick'
 	alias cd..='cd ..'
 	alias df='df -h'
 	alias dm='dmesg -H'
 	alias egrep='egrep --color=auto -i'
 	alias fgrep='fgrep --color=auto -i'
-<<<<<<< HEAD
-=======
-	alias flog='tail -f -n 25 /var/log/fail2ban.log'
->>>>>>> origin/master
 	alias getip='wget -qO - http://wtfismyip.com/text'
 	alias grep='grep --color=auto -i'
 	alias j='jobs -l'
@@ -447,7 +413,6 @@ if [[ "$CONFIGBASH" = 1 ]]; then
 	alias sagu='sudo apt update'
 	alias sagug='sudo apt upgrade'
 	alias sas='sudo apt search'
-<<<<<<< HEAD
 	alias sn='sudo nano'
 	alias ugr='sudo apt list --upgradable'
 
@@ -462,12 +427,6 @@ if [[ "$CONFIGBASH" = 1 ]]; then
 	alias slog='tail -f -n 25 /var/log/syslog'
 	alias ulog='tail -f -n 15 /var/log/ufw.log'
 	alias upslog='tail -f -n 15 /var/log/apcupsd.events'
-=======
-	alias slog='tail -f -n 25 /var/log/syslog'
-	alias sn='sudo nano'
-	alias ugr='sudo apt list --upgradable'
-	alias ulog='tail -f -n 15 /var/log/ufw.log'
->>>>>>> origin/master
 
 	# LINGUISTIC THINGS
 	alias cqp='cqp -eC'
@@ -992,7 +951,6 @@ if [[ "$SERVERSW" = 1 ]]; then
     sudo -H pip3 install --system glances
     sudo -H pip3 install --system s-tui
 
-<<<<<<< HEAD
     # INSTALL RIPGREP (https://github.com/BurntSushi/ripgrep/)
     sudo mkdir -p /tmp/rg               # MAKE TEMP DIR
     sudo chmod -R ugo+rwx /tmp/rg       # CHANGE PERMISSIONS OF TEMP DIR
@@ -1021,8 +979,6 @@ if [[ "$SERVERSW" = 1 ]]; then
     sudo dpkg -i "${FDFILENAME}"        # INSTALL THE DEB FILE
     sudo rm -rf /tmp/fd                 # DELETE THE TMP DIRECTORY AND ITS CONTENTS
 
-=======
->>>>>>> origin/master
     echo "${CGRN}${BLD}==========> SERVER SOFTWARE installation finished.${RST}"
     echo ""
 else
@@ -1311,11 +1267,7 @@ if [[ "$CQPWEBSW" = 1 ]]; then
     ####################
     sudo apt update -y
     sudo apt upgrade -y
-<<<<<<< HEAD
     sudo apt install -y --install-recommends apache2 byobu libapache2-mod-php libjpeg-dev libpng-dev libwebp-dev mysql-client mysql-common mysql-server mysql-utilities php-bz2 php-db php-gd php-json php-mbstring php-mysql php-soap php-xml php-zip r-base ttf-ubuntu-font-family
-=======
-    sudo apt install -y --install-recommends apache2 libapache2-mod-php mysql-client mysql-common mysql-server mysql-utilities php-db php-gd php-mysql php-soap php-xml r-base libpng-dev libjpeg-dev libwebp-dev php-zip php-bz2 php-mbstring byobu ttf-ubuntu-font-family
->>>>>>> origin/master
 
     ####################
     # USER AND GROUP MANAGEMENT &
@@ -2020,14 +1972,11 @@ EOF
 
 
 
-<<<<<<< HEAD
     # UPLOAD FAVICON TO SERVER
     if ! [[ "${FAVICONUPLD}" = 0 ]] || [[ "${FAVICONURL}" = "YOUR_INFO_HERE" ]]; then
         IMAGETARGET="/var/www/html/cqpweb/"
         wget -P "${IMAGETARGET}" "${FAVICONURL}"
     fi
-=======
->>>>>>> origin/master
 
     echo "${CGRN}${BLD}==========> CQPWEB installation finished.${RST}"
     echo "${CWHT}${BLD}            You will find useful scripts in ${HOME}/bin.${RST}"
