@@ -4,7 +4,7 @@ SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
 # DATE:     2019-05-23
-# VERSION:  61
+# VERSION:  62
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes a bare-bones install of Ubuntu 18.04 LTS and sets up Open Corpus
@@ -22,11 +22,17 @@ SCRIPTNAME="cqpweb-instabox.sh"
 
 # CHANGE LOG:
 #
+# v62
+# - CQPweb:           Adjusted syntax of empty strings in config.inc.php.
+# - CQPweb:           Added creation of script for sending test e-mails via Postfix (in ~/bin).
+# - CQPweb:           Added option to modify certain web pages (set CUSTOMIZEPAGES=1).
+# - CQPweb:           Added message to user telling them what IP address to open in browser to use CQPweb.
+#
 # v61
-# - Added: CQPweb:          Installation of php-json module.
-#                           Upload of favicon.ico.
-# - Added: Server Software: Installation of 'ripgrep' and 'fd'.
-# - Added: Bash config:     Aliases for viewing various logs.
+# - CQPweb:           Added install of php-json module.
+#                     Added code to upload favicon.ico to server.
+# - Server Software:  Added install of 'ripgrep' and 'fd'.
+# - Bash config:      Added aliases for viewing various logs.
 #
 # v60
 # - Initial release.
@@ -35,8 +41,9 @@ SCRIPTNAME="cqpweb-instabox.sh"
 # - Pre-release development.
 
 # TODO:
-# - Properly configure PHP mail server. As it stands, it fails to send e-mails. Can it be made to use Postfix?
-
+# - Properly configure PHP mail server. As it stands, it fails to send e-mails. Can it be
+#   made to use Postfix, which does work?
+# - Configure server to use HTTPS and get SSL certificate automatically from somewhere.
 
 
 ################################################################################
@@ -67,9 +74,9 @@ NECESSARYSW=1       # Install software necessary for the server to work.
    SERVERSW=1       # Install server software (monitoring, security and such).
 
 # CWB+CQPWEB+CORPORA
+  CQPCWBRELEASE=0                           # Install a specific SubVersion release of CWB and CQPweb. "0" downloads latest version.
      SHORTSWDIR="software"                  # The directory in $HOME in which to download/install most software.
 COMMONCQPWEBDIR="/usr/local/share/cqpweb"   # Common base dir for CQPweb. No trailing slash, please!
-  CQPCWBRELEASE=0                           # Install a specific SubVersion release of CWB and CQPweb. "0" downloads latest version.
     NUKECORPORA=0                           # Delete ALL installed corpora. Not normally needed!
 
 # CWB
@@ -81,22 +88,23 @@ CWB=1                    # Install CORPUS WORKBENCH (CWB)
   CWBNUKEOLD=0           # Delete previously downloaded CWB files before downloading and installing again? Not normally needed!
 
 # CQPWEB
-CQPWEBSW=1                  # Install CQPWEB SERVER.
-ADMINUSER="YOUR_INFO_HERE"  # CQPweb administrator usernames. Separate multiple entries with | .
-  DBUSER="cqpweb"           # Username for MYSQL database and webuser
-  DBPWD="cqpweb"            # Password for MYSQL database and webuser
-  CQPMAKENEWDB=1            # Delete existing database and make a new one? (NECESSARY for new installs; normally undesirable otherwise).
-  CQPWEBNUKEOLD=0           # Delete previously downloaded CQPweb files before downloading and installing again? Not normally needed!
-  FAVICONUPLD=1             # Upload favicon.ico to root of website?
-   FAVICONURL="YOUR_INFO_HERE" # Source URL of favicon.ico.
+CQPWEBSW=1                    # Install CQPWEB SERVER.
+  ADMINUSER="YOUR_INFO_HERE"  # CQPweb administrator usernames. Separate multiple entries with | .
+  DBUSER="cqpweb"             # Username for MYSQL database and webuser
+  DBPWD="cqpweb"              # Password for MYSQL database and webuser
+  CQPMAKENEWDB=1              # Delete existing database and make a new one? (NECESSARY for new installs; normally undesirable otherwise).
+  FAVICONUPLD=0               # Upload favicon.ico to root of website?
+  FAVICONURL="YOUR_INFO_HERE" # Source URL of favicon.ico.
+  CQPWEBNUKEOLD=0             # Delete previously downloaded CQPweb files before downloading and installing again? Not normally needed!
+CUSTOMIZEPAGES=0              # Customize certain CQPweb web pages. Users will definitely want to customize this.
 
 # CORPORA
 CORPDICKENS=1       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
 
 # ADDITIONAL SYSTEM SOFTWARE
-    MAILSW=1        # Install and configure a mail server.
-SECURITYSW=1        # Install security software. Highly recommended for server install.
-     UFWSW=1        # Install and configure Universal FireWall (UFW). Important for security!
+    MAILSW=0        # Install and configure the Postfix mail server.
+SECURITYSW=0        # Install security software. Highly recommended for server install.
+     UFWSW=0        # Install and configure Universal FireWall (UFW). Important for security!
      UPSSW=0        # Install and configure software for APC BackUPS Pro 900 UPS (051d:0002)
 FAIL2BANSW=0        # Install and configure fail2ban. Important for security! But install this last, after you've confirmed everything works.
 WHITELISTEDIPS="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16" # IP addresses to whitelist (never ban) in fail2ban. Separate with space.
@@ -127,12 +135,14 @@ UCSTOOLKITSW=0      # UCS Toolkit collocations software.
   SERVERALIAS="YOUR_INFO_HERE"    # CQPWEB SERVER'S SHORT DOMAIN NAME (e.g. 'mydomain.com')
 ADMINMAILADDR="YOUR_INFO_HERE"    # ADMINISTRATOR'S E-MAIL ADDRESS.
 OUTMAILSERVER="YOUR_INFO_HERE"    # OUTGOING MAIL SERVER URL
+OUTMAILSERVER="YOUR_INFO_HERE"    # OUTGOING MAIL SERVER URL
+MAILSERVERURL="YOUR_INFO_HERE"    # GENERAL URL OF MAIL SERVER.
 MAILSERVERURL="YOUR_INFO_HERE"    # GENERAL URL OF MAIL SERVER.
 MAILSERVERPWD="YOUR_INFO_HERE"    # PASSWORD FOR E-MAIL SERVER. YOU CAN DELETE THIS
-                                                 #   AFTER INSTALLING THE MAIL SERVER, OR YOU CAN LEAVE IT
-                                                 #   EMPTY AND BE PROMPTED FOR A PASSWORD DURING INSTALLATION.
-PERSONALMAILADDR="YOUR_INFO_HERE"      # YOUR PERSONAL E-MAIL ADDRESS. IF YOU WANT, YOU CAN USE
-                                       #   THE SAME ADDRESS AS FOR ADMIN, OR VICE VERSA.
+                                  #   AFTER INSTALLING THE MAIL SERVER, OR YOU CAN LEAVE IT
+                                  #   EMPTY AND BE PROMPTED FOR A PASSWORD DURING INSTALLATION.
+PERSONALMAILADDR="YOUR_INFO_HERE" # YOUR PERSONAL E-MAIL ADDRESS. IF YOU WANT, YOU CAN USE
+                                  #   THE SAME ADDRESS AS FOR ADMIN, OR VICE VERSA.
 
 # PORTS
 # Comment out a port to disable it and automatically close it with UFW.
@@ -1242,7 +1252,6 @@ if [[ "$CWB" = 1 ]] && [[ "$CWBVER" = "latest" || "$CWBVER" = "stable" ]]; then
     fi
 
 else
-    # NO INSTALL - USER CHOSE NOT TO INSTALL CQP
     echo "${CORG}${BLD}==========> Skipping CORPUS WORKBENCH (CWB) installation...${RST}"
 fi
 
@@ -1432,7 +1441,7 @@ EOF
             sudo mysql -u root -Bse "create user ${DBUSER} identified by '${DBPWD}';"
             sudo mysql -u root -Bse "grant all on cqpweb.* to ${DBUSER};"
             sudo mysql -u root -Bse "grant file on *.* to ${DBUSER};"
-            echo "CHOSE TO RECREATE MYSQL DB!"
+
             echo "${CGRN}==========> MySQL database deleted and recreated.${RST}"
         else
             echo "${CORG}==========> MySQL database NOT deleted...${RST}"
@@ -1472,12 +1481,9 @@ EOF
 	<?php
 
 	/* ---------------------------------------------------------------------- *
+	 *                                                                        *
 	 * MOST OF THESE VALUES ARE THE DEFAULTS GIVEN IN THE CQPWEB ADMIN MANUAL.*
-	 * Note that at least as of May 2019, when set to the default value of "" *
-	 * (empty), some variables seem not to trigger the use of default values  *
-	 * but are treated literally (as an empty string), causing problems (e.g. *
-	 * CSS directories and program locations). Therefore, any variables       *
-	 * without non-default values are commented out here.                     *
+	 *                                                                        *
 	 * ---------------------------------------------------------------------- */
 
 	/* ---------------------------------------------------------------------- *
@@ -1504,11 +1510,11 @@ EOF
 	/* ---------------------------------------------------------------------- *
 	 * PROGRAM LOCATIONS                                                      *
 	 * ---------------------------------------------------------------------- */
-	/* \$path_to_cwb                   = "";                                  */
-	/* \$path_to_gnu                   = "";                                  */
-	/* \$path_to_perl                  = "";                                  */
-	/* \$path_to_r                     = "";                                  */
-	/* \$perl_extra_directories        = "";                                  */
+	/* \$path_to_cwb                   =   ;                                  */
+	/* \$path_to_gnu                   =   ;                                  */
+	/* \$path_to_perl                  =   ;                                  */
+	/* \$path_to_r                     =   ;                                  */
+	/* \$perl_extra_directories        =   ;                                  */
 
 	/* ---------------------------------------------------------------------- *
 	 * MYSQL FEATURES                                                         *
@@ -1542,9 +1548,9 @@ EOF
 	/* ---------------------------------------------------------------------- *
 	 * LOOK AND FEEL TWEAKS                                                   *
 	 * ---------------------------------------------------------------------- */
-	 /*\$css_path_for_homepage           = "";                                */
-	 /*\$css_path_for_adminpage          = "";                                */
-	 /*\$css_path_for_userpage           = "";                                */
+	 /*\$css_path_for_homepage           =   ;                                */
+	 /*\$css_path_for_adminpage          =   ;                                */
+	 /*\$css_path_for_userpage           =   ;                                */
 	 \$homepage_use_corpus_categories  = false;
 	 \$homepage_welcome_message        = "YOUR_INFO_HERE";
 	 \$homepage_logo_left              = "";
@@ -1557,7 +1563,7 @@ EOF
 	 \$allow_account_self_registration = true;
 	 \$account_create_contact          = "";
 	 \$account_create_captcha          = false;
-	 \$account_create_one_per_email    = true;
+	 \$account_create_one_per_email    = flase;
 	 \$blowfish_cost                   = 13;
 	 \$create_password_function        = "password_insert_internal";
 
@@ -1586,8 +1592,8 @@ EOF
 	 * ---------------------------------------------------------------------- */
 	 \$cqpweb_switched_off          = false;
 	 \$cqpweb_switched_off_extra_message = "Sorry! We're temporarily down for maintenance. Check back soon.";
-	/*\$cqpweb_root_url              = "";                                    */
-	/*\$cqpweb_no_internet           = "";                                    */
+	/*\$cqpweb_root_url              =   ;                                    */
+	/*\$cqpweb_no_internet           =   ;                                    */
 	 \$cqpweb_email_from_address    = "${ADMINMAILADDR}";
 	 \$server_admin_email_address   = "${ADMINMAILADDR}";
 	 \$cqpweb_cookie_name           = "CQPwebLogonToken";
@@ -1601,6 +1607,7 @@ EOF
     # RUN CQPWEB'S AUTOSETUP TO FINALIZE THE INSTALLATION
     cd /var/www/html/cqpweb/bin/ || exit
     sudo php autosetup.php
+
 
     ########################################
     # CREATE MAINTENANCE SCRIPTS ON SERVER
@@ -1888,6 +1895,43 @@ EOF
 
 
     ####################
+    # CREATE SCRIPT TO SEND TEST MAIL VIA POSTFIX
+    ####################
+
+    # DELETE ANY OLD VERSION OF THE SCRIPT
+    sudo rm -f "${HOME}/bin/testmail-postfix.sh"
+
+    # WRITE SCRIPT TO NEW FILE
+    sudo tee "${HOME}/bin/testmail-postfix.sh" <<- EOF >/dev/null 2>&1
+	#!/bin/bash
+
+	# SEND TEST E-MAIL VIA POSTFIX
+	# This script was created automatically by ${SCRIPTNAME} on ${DATE}.
+
+	DATE="\$(date +'%Y/%m/%d')"
+	TIME="\$(date +'%H:%M:%S')"
+	USER="\$(whoami)"
+	LOCALHOSTNAME="\$(hostname)"
+	INTERNALIP="\$(ip route get 1.2.3.4 | awk '{print \$7}')"
+	EXTERNALIP="\$(wget -qO - http://checkip.amazonaws.com)"
+
+	echo ""
+	echo "${CLBL}${BLD}==========> SENDING TEST E-MAIL VIA POSTFIX...${RST}"
+
+	echo -e "Hi!\\n\\nThis is the Postfix send-only mail server on \${LOCALHOSTNAME} (\${INTERNALIP} / \${EXTERNALIP}). I'm sending this test e-mail to ${PERSONALMAILADDR} via ${OUTMAILSERVER}:${SMTPPORT}.\\n\\nIt's currently \${TIME} on \${DATE}.\\n\\nHave a nice day!" | mail -s "Test mail from Postfix on \$LOCALHOSTNAME" -a "From: ${ADMINMAILADDR}" "${PERSONALMAILADDR}"
+
+	echo "${CGRN}${BLD}==========> Test e-mail sent via Postfix.${RST}"
+	echo "${CWHT}${BLD}If you don't receive it, look at run ${CORG}sudo tail -f /var/log/mail.log${CWHT}.${RST}"
+	echo ""
+
+EOF
+
+    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
+    sudo chown "${USER}:${USER}" "${HOME}/bin/testmail-postfix.sh"
+    sudo chmod ug+rwx "${HOME}/bin/testmail-postfix.sh"
+
+
+    ####################
     # CREATE SCRIPT TO MANUALLY CALCULATE STTR
     ####################
 
@@ -1970,16 +2014,17 @@ EOF
 
 
 
-
+    sudo
 
     # UPLOAD FAVICON TO SERVER
     if ! [[ "${FAVICONUPLD}" = 0 ]] || [[ "${FAVICONURL}" = "YOUR_INFO_HERE" ]]; then
         IMAGETARGET="/var/www/html/cqpweb/"
-        wget -P "${IMAGETARGET}" "${FAVICONURL}"
+        sudo wget -P "${IMAGETARGET}" "${FAVICONURL}"
     fi
 
     echo "${CGRN}${BLD}==========> CQPWEB installation finished.${RST}"
-    echo "${CWHT}${BLD}            You will find useful scripts in ${HOME}/bin.${RST}"
+    echo "${CWHT}${BLD}            You will find useful scripts in ${CORG}${HOME}/bin${CWHT}.${RST}"
+    echo "${CWHT}${BLD}            To use CQPweb, open ${CORG}http://${INTERNALIP}${CWHT} in your browser.${RST}"
     echo ""
     echo "${CRED}${BLD}            Kindly reboot now.${RST}"
     echo ""
@@ -1987,6 +2032,27 @@ EOF
     echo ""
 else
     echo "${CORG}${BLD}==========> Skipping CQPWEB installation...${RST}"
+fi
+
+
+########################################
+# CUSTOMIZE CERTAIN CQPWEB WEB PAGES +++++
+########################################
+if [[ "${CUSTOMIZEPAGES}" = 1 ]]; then
+
+    ########## CUSTOMIZE /lib/useracct-forms.php
+    CURRFILE="/var/www/html/cqpweb/lib/useracct-forms.php"
+
+    # Make backup
+    if ! [[ -f "${CURRFILE}.BAK" ]]; then
+        sudo cp "${CURRFILE}" "${CURRFILE}.BAK"
+    fi
+
+    # Customize
+    sudo perl -i -p0e 's/you should use it to sign up<\/strong>\.[\n\t ]+?<\/p>[\n\t ]+?<p .+?>[\n\t ]+?<.+?>[\n\t ]+?This is because your access/you should use it to sign up<\/strong>. This is because your access/gms' "${CURRFILE}"
+
+    sudo perl -i -p0e 's/<tr>[\n\t ]+?<td class="concordgrey" colspan="2">[\n\t ]+?<p class="spacer">&nbsp;<\/p>[\n\t ]+?<p>[\n\t ]+?The following three questions.+?<\/tr>/\n/gms' "${CURRFILE}"
+
 fi
 
 
@@ -2028,9 +2094,13 @@ if [[ "$MAILSW" = 1 ]]; then
     echo ""
     echo "${CLBL}${BLD}==========> Installing MAIL SERVER...${RST}"
 
-    # INSTALL MAIL SERVER SOFTWARE
+    # UPDATE SYSTEM SOFTWARE
     sudo apt update -y
     sudo apt upgrade -y
+
+    # REMOVE EVERY LAST VESTIGE OF SENDMAIL
+    sudo apt remove sendmail -y
+    sudo apt purge sendmail -y
 
     echo ""
     echo "${CORG}${BLD}We will now install the Postfix mail server. If asked, choose the following options...${RST}"
