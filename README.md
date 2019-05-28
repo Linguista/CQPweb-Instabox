@@ -1,5 +1,5 @@
 # CQPweb-Instabox
-Script that sets up and configures an entire CQPweb server installation. For now, see the source code for detailed instructions.
+Script that sets up and configures an entire [CQPweb](http://cwb.sourceforge.net/cqpweb.php) server installation. For now, see the source code for detailed instructions.
 
 
 # Quick instructions for setting up a CQPweb server with public key SSH access.
