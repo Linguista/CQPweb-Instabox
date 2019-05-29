@@ -1,39 +1,22 @@
 # CQPweb-Instabox
-Script that sets up and configures an entire [CQPweb](http://cwb.sourceforge.net/cqpweb.php) server installation. For now, see the source code for detailed instructions.
+Script that sets up and configures an entire [CQPweb](http://cwb.sourceforge.net/cqpweb.php) server installation. 
 
+# Instructions for setting up your own personal CQPweb In A Box.
+As of v. 63, CQPweb-Instabox is even easier to use -- it allows you to perform one of four pre-defined install types, plus a default install that includes whatever software and configuration is set to `1` in the script file (this allows you to customize your preferences down to the last detail and then deploy this install as many times as you wish).
 
-# Quick instructions for setting up a CQPweb server with public key SSH access.
-1. Copy the script to your server (virtual or bare metal).
+To install CQPweb-Instabox, run one of the following:
 
-2. Open the script, search for all instances of variables set to `YOUR_INFO_HERE` and change them to appropriate values. Save.
+* `./cqpweb-instabox.sh vm`: Set up a basic CWB and CQPweb install in a virtual machine.
+* `./cqpweb-instabox.sh vmdeluxe`: Set up a CWB and CQPweb install, plus a broad selection of linguistics software, in a virtual machine.
+* `./cqpweb-instabox.sh server`: Set up CWB, CQPweb and basic server software on a server (headless or GUI).
+* `./cqpweb-instabox.sh serverdeluxe`: Set up CWB, CQPweb and a suite of server-related software on a server (headless or GUI).
+* `./cqpweb-instabox.sh default`: Set up and configure all software specified by the user in the script's configuration section.
 
-3. Run the script. Don't go away -- it will ask you the occasional question, request you confirm certain things, and provide you with quite a lot of information. In particular, make note of the command to upload your SSH key to the server.
+Note that the two server options, and possibly the `default` option (depending on your settings), install and configure SSH public key access. This requires an additional step -- after the main install, you must upload your public SSH key to the server and then run this script again, this time with the `ssh` argument, as follows:
 
-4. Upload your SSH key from your personal computer to the server using the command provided in the previous step.
+* `./cqpweb-instabox.sh ssh`
 
-5. Open the script and in the `SYSTEM CONFIGURATION` section, find the variables currently set to `1` (meaning "to be run") and set them to `2` (meaning "already run") so you don't run them again.
-
-6. Find the variable `SSHKEYSW`, which is set to `0` (meaning "do not run"), and set it to `1` (meaning "to be run). Save.
-
-7. Run the script.
-
-8. Reboot.
-
-You should now have CQPweb running on the IP address the script provides you.
-
-
-# Quick instructions for setting up a CQPweb server without SSH access.
-1. Copy the script to your server (virtual or bare metal).
-
-2. Open the script, search for all instances of variables set to `YOUR_INFO_HERE` and change them to appropriate values.
-
-3. Find `SSHPWDSW` and `SSHKEYSW` and set them both to `0`. Save.
-
-4. Run the script.
-
-5. Reboot.
-
-You should now have CQPweb running on the IP address the script provides you.
+Also note that while most installation options only take a few minutes, the `vmdeluxe` option can take several hours due to the fact that it downloads and complies a great many R packages.
 
 # Known issues
-While the Postfix mail agent works just fine, the PHP mail module that CQPweb uses does not.
+While the Postfix mail agent that the `server` and `serverdeluxe` options install works just fine, the PHP mail module that CQPweb uses does not work.
