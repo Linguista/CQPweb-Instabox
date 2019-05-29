@@ -3,8 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-05-23
-# VERSION:  62
+# DATE:     2019-05-29
+# VERSION:  63
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes a bare-bones install of Ubuntu 18.04 LTS and sets up Open Corpus
@@ -22,17 +22,25 @@ SCRIPTNAME="cqpweb-instabox.sh"
 
 # CHANGE LOG:
 #
+# v63
+# - All:             Added metaconfigurations and ability to select them from CLI.
+# - CWB+CQPweb       Added script to facilitate off-line calculation of frequencies (in ~/bin).
+# - CQPweb:          Bugfix: Lack of 'sudo' prevented /var/www/html/cqpweb from being created in certain conditions.
+# - CWB+CQPweb:      Added text telling user what revision is being installed.
+# - CQPweb:          Added variable to select whether or not to upload top left/right logo, along with variables for
+#                      image source and destination.
+#
 # v62
-# - CQPweb:           Adjusted syntax of empty strings in config.inc.php.
-# - CQPweb:           Added creation of script for sending test e-mails via Postfix (in ~/bin).
-# - CQPweb:           Added option to modify certain web pages (set CUSTOMIZEPAGES=1).
-# - CQPweb:           Added message to user telling them what IP address to open in browser to use CQPweb.
+# - CQPweb:          Adjusted syntax of empty strings in config.inc.php.
+# - CQPweb:          Added creation of script for sending test e-mails via Postfix (in ~/bin).
+# - CQPweb:          Added option to modify certain web pages (set CUSTOMIZEPAGES=1).
+# - CQPweb:          Added message to user telling them what IP address to open in browser to use CQPweb.
 #
 # v61
-# - CQPweb:           Added install of php-json module.
-#                     Added code to upload favicon.ico to server.
-# - Server Software:  Added install of 'ripgrep' and 'fd'.
-# - Bash config:      Added aliases for viewing various logs.
+# - CQPweb:          Added install of php-json module.
+#                    Added code to upload favicon.ico to server.
+# - Server Software: Added install of 'ripgrep' and 'fd'.
+# - Bash config:     Added aliases for viewing various logs.
 #
 # v60
 # - Initial release.
@@ -88,18 +96,21 @@ CWB=1                    # Install CORPUS WORKBENCH (CWB)
   CWBNUKEOLD=0           # Delete previously downloaded CWB files before downloading and installing again? Not normally needed!
 
 # CQPWEB
-CQPWEBSW=1                    # Install CQPWEB SERVER.
-  ADMINUSER="YOUR_INFO_HERE"  # CQPweb administrator usernames. Separate multiple entries with | .
-  DBUSER="cqpweb"             # Username for MYSQL database and webuser
-  DBPWD="cqpweb"              # Password for MYSQL database and webuser
-  CQPMAKENEWDB=1              # Delete existing database and make a new one? (NECESSARY for new installs; normally undesirable otherwise).
-  FAVICONUPLD=0               # Upload favicon.ico to root of website?
-  FAVICONURL="YOUR_INFO_HERE" # Source URL of favicon.ico.
-  CQPWEBNUKEOLD=0             # Delete previously downloaded CQPweb files before downloading and installing again? Not normally needed!
-CUSTOMIZEPAGES=0              # Customize certain CQPweb web pages. Users will definitely want to customize this.
+CQPWEBSW=1                  # Install CQPWEB SERVER.
+ADMINUSER="YOUR_INFO_HERE"  # CQPweb administrator usernames. Separate multiple entries with | .
+  DBUSER="cqpweb"           # Username for MYSQL database and webuser
+  DBPWD="cqpweb"            # Password for MYSQL database and webuser
+  CQPMAKENEWDB=1            # Delete existing database and make a new one? (NECESSARY for new installs; normally undesirable otherwise).
+  IMAGEUPLD=1               # Upload specified image to use as top left/right graphic in CQPweb. Set location and URL below.
+  IMAGESOURCE="YOUR_INFO_HERE" # URL of top left/right logo image source file.
+  IMAGETARGET="YOUR_INFO_HERE" # Destination path of top left/right logo image file.
+  FAVICONUPLD=1             # Upload favicon.ico to root of website?
+   FAVICONURL="YOUR_INFO_HERE" # Source URL of favicon.ico.
+  CQPWEBNUKEOLD=0           # Delete previously downloaded CQPweb files before downloading and installing again? Not normally needed!
+CUSTOMIZEPAGES=0            # Customize certain CQPweb web pages. Users will definitely want to customize this.
 
 # CORPORA
-CORPDICKENS=1       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
+CORPDICKENS=2       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
 
 # ADDITIONAL SYSTEM SOFTWARE
     MAILSW=0        # Install and configure the Postfix mail server.
@@ -111,7 +122,7 @@ WHITELISTEDIPS="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16" # IP addres
 
 # ADDITIONAL LINGUISTIC SOFTWARE: HEADLESS SERVER OR GUI
      FREELINGSW=0           # Install FreeLing tagger.
-       FREELINGESCLMODS=0   # Modify FreeLing's Chilean Spanish install.
+       FREELINGESCLMODS=1   # Modify FreeLing's Chilean Spanish install.
        FREELINGNUKEOLD=0    # Delete all downloaded FreeLing files before installing again.
 PRAATHEADLESSSW=0           # Install headless Praat phonetic analysis software.
      VISIDATASW=0           # Install Visidata, an amazing TUI tool to manipulate and process CSV files.
@@ -139,10 +150,10 @@ OUTMAILSERVER="YOUR_INFO_HERE"    # OUTGOING MAIL SERVER URL
 MAILSERVERURL="YOUR_INFO_HERE"    # GENERAL URL OF MAIL SERVER.
 MAILSERVERURL="YOUR_INFO_HERE"    # GENERAL URL OF MAIL SERVER.
 MAILSERVERPWD="YOUR_INFO_HERE"    # PASSWORD FOR E-MAIL SERVER. YOU CAN DELETE THIS
-                                  #   AFTER INSTALLING THE MAIL SERVER, OR YOU CAN LEAVE IT
-                                  #   EMPTY AND BE PROMPTED FOR A PASSWORD DURING INSTALLATION.
-PERSONALMAILADDR="YOUR_INFO_HERE" # YOUR PERSONAL E-MAIL ADDRESS. IF YOU WANT, YOU CAN USE
-                                  #   THE SAME ADDRESS AS FOR ADMIN, OR VICE VERSA.
+                                                 #   AFTER INSTALLING THE MAIL SERVER, OR YOU CAN LEAVE IT
+                                                 #   EMPTY AND BE PROMPTED FOR A PASSWORD DURING INSTALLATION.
+PERSONALMAILADDR="YOUR_INFO_HERE"      # YOUR PERSONAL E-MAIL ADDRESS. IF YOU WANT, YOU CAN USE
+                                       #   THE SAME ADDRESS AS FOR ADMIN, OR VICE VERSA.
 
 # PORTS
 # Comment out a port to disable it and automatically close it with UFW.
@@ -181,11 +192,10 @@ OS="$(cat /etc/lsb-release | grep DISTRIB_ID | sed -r 's/DISTRIB_ID=//')" # Dist
 ETHERNET="$(ip link show | grep '[0-9]: e[a-z0-9]*:' | sed -r 's/^.+ (e[a-z0-9]+):.+$/\1/')" # Ethernet adapter. This is NOT infallible!
 #ETHERNET=$(ifconfig | grep '^e' | sed -r 's/:.+$//')   # Ethernet adapter (older method). This is NOT infallible!
 EXTERNALIP="$(wget -qO - http://checkip.amazonaws.com)" # Server's external IP.
-# EXTERNALIP=$(wget -qO - http://wtfismyip.com/text)    # Server's external IP (alternative method).
 INTERNALIP="$(ip route get 1.2.3.4 | awk '{print $7}')" # Server's internal IP.
 INTERNALIP2="$(ip addr show ${ETHERNET} | grep 'inet ' | awk '{print $2}' | cut -f1 -d'/')" # Server's internal IP (Method 2).
 SWDIR="${HOME}/${SHORTSWDIR}"                           # Full software installation directory.
-
+USERARG="$1"
 # MAKE BASIC REQUIRED DIRECTORIES
 mkdir -p "${SWDIR}"
 
@@ -225,23 +235,325 @@ NUL="$(tput rmul)"      # NO-UNDERLINE
 RST="$(tput sgr0)"      # RESET ALL FORMATTING
 
 
-################################################################################
-# SCRIPT USAGE INFO
-################################################################################
+# SET INFORMATIONAL TEXT ABOUT CWB+CQPweb RELEASE BEING INSTALLED
+if [[ "$CQPCWBRELEASE" = 0 ]]; then
+    CQPCWBRELEASETEXT="the ${CORG}most recent revision"
+else
+    CQPCWBRELEASETEXT="${CORG}revision ${CQPCWBRELEASE}"
+fi
 
+################################################################################
+# SET VARIABLES FOR DIFFERENT TYPES OF INSTALL.
+# PROVIDE INFO TO USER IF THEY SPECIFY NO ARGUMENT, TOO MANY ARGUMENTS, OR '-h'
+################################################################################
+if [[ "$USERARG" = "default" ]]; then
+    # USE VARIABLES AS SET ABOVE.
+    echo ""
+elif [[ "$USERARG" = "vm" ]]; then
+    # SYSTEM CONFIGURATION
+    UPGRADEOS=1
+    CONFIGSHELL=0
+    CONFIGBASH=1
+    CONFIGTZ=0
+    CONFIGCONSOLE=0
+    CONFIGKEYBOARD=0
+    CONFIGUBUCLOUD=0
+    CONFIGHOST=0
+    # SSH CONFIGURATION
+    SSHGENNEWKEYS=0
+    SSHPWDSW=0
+    SSHKEYSW=0
+    # MAIN SOFTWARE SETS
+    NECESSARYSW=1
+    USEFULSW=1
+    SERVERSW=0
+    # CWB+CQPWEB+CORPORA
+#     CQPCWBRELEASE=0
+    # CWB
+    CWB=1
+    CWBVER="latest"
+    CWBPLATFORM="linux-64"
+    CWBSITE="standard"
+    # CQPWEB
+    CQPWEBSW=1
+    CQPMAKENEWDB=1
+    IMAGEUPLD=0
+    FAVICONUPLD=0
+    # CORPORA
+    CORPDICKENS=1
+    # ADDITIONAL SYSTEM SOFTWARE
+    MAILSW=0
+    SECURITYSW=0
+    UFWSW=0
+    UPSSW=0
+    FAIL2BANSW=0
+    # ADDITIONAL LINGUISTIC SOFTWARE: HEADLESS SERVER OR GUI
+    FREELINGSW=0
+    FREELINGESCLMODS=0
+    FREELINGNUKEOLD=0
+    PRAATHEADLESSSW=0
+    VISIDATASW=0
+    # ADDITIONAL LINGUISTIC SOFTWARE: OS WITH GUI ONLY
+    RSTUDIOSW=0
+    RLINGPKGSW=0
+    SPYDERIDESW=0
+    NLPSW=0
+    UCSTOOLKITSW=0
+    PRAATSW=0
+elif [[ "$USERARG" = "vmdeluxe" ]]; then
+    echo "vmdeluxe"
+    # SYSTEM CONFIGURATION
+    UPGRADEOS=1
+    CONFIGSHELL=0
+    CONFIGBASH=1
+    CONFIGTZ=0
+    CONFIGCONSOLE=0
+    CONFIGKEYBOARD=0
+    CONFIGUBUCLOUD=0
+    CONFIGHOST=0
+    # SSH CONFIGURATION
+    SSHGENNEWKEYS=0
+    SSHPWDSW=0
+    SSHKEYSW=0
+    # MAIN SOFTWARE SETS
+    NECESSARYSW=1
+    USEFULSW=1
+    SERVERSW=0
+    # CWB+CQPWEB+CORPORA
+#     CQPCWBRELEASE=0
+    # CWB
+    CWB=1
+    CWBVER="latest"
+    CWBPLATFORM="linux-64"
+    CWBSITE="standard"
+    # CQPWEB
+    CQPWEBSW=1
+    CQPMAKENEWDB=1
+    IMAGEUPLD=0
+    FAVICONUPLD=0
+    # CORPORA
+    CORPDICKENS=1
+    # ADDITIONAL SYSTEM SOFTWARE
+    MAILSW=0
+    SECURITYSW=0
+    UFWSW=0
+    UPSSW=0
+    FAIL2BANSW=0
+    # ADDITIONAL LINGUISTIC SOFTWARE: HEADLESS SERVER OR GUI
+    FREELINGSW=0
+    FREELINGESCLMODS=0
+    FREELINGNUKEOLD=0
+    PRAATHEADLESSSW=0
+    VISIDATASW=0
+    # ADDITIONAL LINGUISTIC SOFTWARE: OS WITH GUI ONLY
+    RSTUDIOSW=1
+    RLINGPKGSW=1
+    SPYDERIDESW=1
+    NLPSW=1
+    UCSTOOLKITSW=1
+    PRAATSW=1
+elif [[ "$USERARG" = "server" ]]; then
+    echo "server"
+    # SYSTEM CONFIGURATION
+    UPGRADEOS=1
+    CONFIGSHELL=1
+    CONFIGBASH=1
+    CONFIGTZ=1
+    CONFIGCONSOLE=1
+    CONFIGKEYBOARD=1
+    CONFIGUBUCLOUD=0
+    CONFIGHOST=0
+    # SSH CONFIGURATION
+    SSHGENNEWKEYS=1
+    SSHPWDSW=1
+    SSHKEYSW=0
+    # MAIN SOFTWARE SETS
+    NECESSARYSW=1
+    USEFULSW=1
+    SERVERSW=1
+    # CWB+CQPWEB+CORPORA
+#     CQPCWBRELEASE=0
+    # CWB
+    CWB=1
+    CWBVER="latest"
+    CWBPLATFORM="linux-64"
+    CWBSITE="standard"
+    # CQPWEB
+    CQPWEBSW=1
+    CQPMAKENEWDB=1
+    IMAGEUPLD=0
+    FAVICONUPLD=0
+    # CORPORA
+    CORPDICKENS=1
+    # ADDITIONAL SYSTEM SOFTWARE
+    MAILSW=0
+    SECURITYSW=1
+    UFWSW=1
+    UPSSW=0
+    FAIL2BANSW=0
+    # ADDITIONAL LINGUISTIC SOFTWARE: HEADLESS SERVER OR GUI
+    FREELINGSW=0
+    FREELINGESCLMODS=0
+    FREELINGNUKEOLD=0
+    PRAATHEADLESSSW=0
+    VISIDATASW=0
+    # ADDITIONAL LINGUISTIC SOFTWARE: OS WITH GUI ONLY
+    RSTUDIOSW=0
+    RLINGPKGSW=0
+    SPYDERIDESW=0
+    NLPSW=0
+    UCSTOOLKITSW=0
+    PRAATSW=0
+elif [[ "$USERARG" = "serverdeluxe" ]]; then
+    echo "serverdeluxe"
+    # SYSTEM CONFIGURATION
+    UPGRADEOS=1
+    CONFIGSHELL=1
+    CONFIGBASH=1
+    CONFIGTZ=1
+    CONFIGCONSOLE=1
+    CONFIGKEYBOARD=1
+    CONFIGUBUCLOUD=0
+    CONFIGHOST=0
+    # SSH CONFIGURATION
+    SSHGENNEWKEYS=1
+    SSHPWDSW=1
+    SSHKEYSW=0
+    # MAIN SOFTWARE SETS
+    NECESSARYSW=1
+    USEFULSW=1
+    SERVERSW=1
+    # CWB+CQPWEB+CORPORA
+#     CQPCWBRELEASE=0
+    # CWB
+    CWB=1
+    CWBVER="latest"
+    CWBPLATFORM="linux-64"
+    CWBSITE="standard"
+    # CQPWEB
+    CQPWEBSW=1
+    CQPMAKENEWDB=1
+    IMAGEUPLD=0
+    FAVICONUPLD=0
+    # CORPORA
+    CORPDICKENS=1
+    # ADDITIONAL SYSTEM SOFTWARE
+    MAILSW=1
+    SECURITYSW=1
+    UFWSW=1
+    UPSSW=0
+    FAIL2BANSW=1
+    # ADDITIONAL LINGUISTIC SOFTWARE: HEADLESS SERVER OR GUI
+    FREELINGSW=0
+    FREELINGESCLMODS=0
+    FREELINGNUKEOLD=0
+    PRAATHEADLESSSW=0
+    VISIDATASW=0
+    # ADDITIONAL LINGUISTIC SOFTWARE: OS WITH GUI ONLY
+    RSTUDIOSW=0
+    RLINGPKGSW=0
+    SPYDERIDESW=0
+    NLPSW=0
+    UCSTOOLKITSW=0
+    PRAATSW=0
+elif [[ "$USERARG" = "ssh" ]]; then
+    echo "ssh"
+    # SYSTEM CONFIGURATION
+    UPGRADEOS=0
+    CONFIGSHELL=0
+    CONFIGBASH=0
+    CONFIGTZ=0
+    CONFIGCONSOLE=0
+    CONFIGKEYBOARD=0
+    CONFIGUBUCLOUD=0
+    CONFIGHOST=0
+    # SSH CONFIGURATION
+    SSHGENNEWKEYS=0
+    SSHPWDSW=0
+    SSHKEYSW=1
+    # MAIN SOFTWARE SETS
+    NECESSARYSW=0
+    USEFULSW=0
+    SERVERSW=0
+    # CWB+CQPWEB+CORPORA
+#     CQPCWBRELEASE=0
+    # CWB
+    CWB=0
+    CWBVER="latest"
+    CWBPLATFORM="linux-64"
+    CWBSITE="standard"
+    # CQPWEB
+    CQPWEBSW=0
+    CQPMAKENEWDB=0
+    IMAGEUPLD=0
+    FAVICONUPLD=0
+    # CORPORA
+    CORPDICKENS=0
+    # ADDITIONAL SYSTEM SOFTWARE
+    MAILSW=0
+    SECURITYSW=0
+    UFWSW=0
+    UPSSW=0
+    FAIL2BANSW=0
+    # ADDITIONAL LINGUISTIC SOFTWARE: HEADLESS SERVER OR GUI
+    FREELINGSW=0
+    FREELINGESCLMODS=0
+    FREELINGNUKEOLD=0
+    PRAATHEADLESSSW=0
+    VISIDATASW=0
+    # ADDITIONAL LINGUISTIC SOFTWARE: OS WITH GUI ONLY
+    RSTUDIOSW=0
+    RLINGPKGSW=0
+    SPYDERIDESW=0
+    NLPSW=0
+    UCSTOOLKITSW=0
+    PRAATSW=0
+else
+    # PRINT INFORMATION IF -h IS SELECTED OR NO VALID ARGUMENT IS PROVIDED.
+    echo ""
+    echo "${CLBL}${BLD}===========================> WELCOME TO CQPWEB-INSTABOX <===========================${RST}"
+    echo ""
+    echo "${CWHT}${BLD}This script takes a Ubuntu install (ideally 18.04 LTS) and sets it up with${RST}"
+    echo "${CWHT}${BLD}Open Corpus Workbench (CWB), CQPweb and other software of your choosing, making${RST}"
+    echo "${CWHT}${BLD}a customized CQPwebInABox in just a few minutes.${RST}"
+    echo ""
+    echo "${CWHT}${BLD}Using CQPWEB-INSTABOX is a two-step process.${RST}"
+    echo ""
+    echo "${CWHT}${BLD}First, you must ${CGRN}edit this script${CWHT}, fill in all the fields marked ${CORG}YOUR_INFO_HERE${CWHT} with${RST}"
+    echo "${CWHT}${BLD}appropriate values, save it, and run it again with the appropriate argument.${RST}"
+    echo ""
+    echo "${CWHT}${BLD}Second, you must ${CGRN}run this script with one of the following arguments${CWHT}:${RST}"
+    echo "${CWHT}${BLD}  ${CORG}default${CWHT}      : Use the options that are configured in the script. This lets${RST}"
+    echo "${CWHT}${BLD}                 you set up a customized install and deploy it.${RST}"
+    echo "${CWHT}${BLD}  ${CORG}vm${CWHT}           : Set up a basic CWB and CQPweb install in a virtual machine.${RST}"
+    echo "${CWHT}${BLD}  ${CORG}vmdeluxe${CWHT}     : Set up CWB, CQPweb and a series of other linguistics and NLP${RST}"
+    echo "${CWHT}${BLD}                 software in a virtual machine.${RST}"
+    echo "${CWHT}${BLD}  ${CORG}server${CWHT}       : Set up CWB, CQPweb and basic server software on a server${RST}"
+    echo "${CWHT}${BLD}                 (headless or GUI).${RST}"
+
+    echo "${CWHT}${BLD}  ${CORG}serverdeluxe${CWHT} : Set up CWB, CQPweb and a suite of server-related software on${RST}"
+    echo "${CWHT}${BLD}                 a server (headless or GUI).${RST}"
+    echo "${CWHT}${BLD}  ${CORG}ssh${CWHT}          : Finish SSH setup after doing a server install.${RST}"
+    echo "${CWHT}${BLD}  ${CORG}-h${CWHT}           : See this help message.${RST}"
+    echo ""
+    echo "${CWHT}${BLD}Note that the two server options install and configure SSH public key access. This${RST}"
+    echo "${CWHT}${BLD}requires an additional step -- after the main install, you must upload your public${RST}"
+    echo "${CWHT}${BLD}SSH key to the server and run this script again, this time with the ${CORG}ssh${CWHT} argument.${RST}"
+    echo ""
+
+    exit
+fi
+
+
+################################################################################
+# PRINT WELCOME MESSAGE
+################################################################################
 echo ""
 echo "${CLBL}${BLD}==========> WELCOME TO CQPWEB-INSTABOX <==========${RST}"
 echo ""
-echo "${CWHT}${BLD}            This script takes a fresh Ubuntu 18.04 LTS installation and sets it up with${RST}"
-echo "${CWHT}${BLD}            Open Corpus Workbench (CWB), CQPweb and other software.${RST}"
+echo "${CWHT}${BLD}            This script installs Open Corpus Workbench (CWB), CQPweb and other software.${RST}"
+echo "${CWHT}${BLD}            You have selected the ${CGRN}${USERARG}${CWHT} installation option.${RST}"
 echo ""
-echo "${CWHT}${BLD}            You ${CORG}must${CWHT} configure this script before running it, by editing its ${CLBL}SCRIPT${CWHT}${RST}"
-echo "${CLBL}${BLD}            CONFIGURATION${CWHT} and ${CLBL}VARIABLES YOU MUST SET${CWHT} sections.${RST}"
-echo ""
-echo "${CWHT}${BLD}            Note that you ${CORG}cannot${CWHT} run both the ${CLBL}SSH VIA PASSWORD${CWHT} and the ${CLBL}SSH VIA PUBLIC KEY${CWHT}${RST}"
-echo "${CWHT}${BLD}            routines in the same pass -- you must copy your public key to the server in between.${RST}"
-echo ""
-
 read -r -p "${CORG}${BLD}            Do you want to proceed? (y/n) ${RST}" ANSWER
 if [[ "$ANSWER" = [yY] || "$ANSWER" = [yY][eE][sS] ]]; then
     echo "${CGRN}${BLD}==========> Running CQPWEB-INSTABOX...${RST}"
@@ -1023,7 +1335,7 @@ fi
 if [[ "$CWB" = 1 ]] && [[ "$CWBVER" = "latest" || "$CWBVER" = "stable" ]]; then
 
     echo ""
-    echo "${CLBL}${BLD}==========> Installing the ${CORG}${CWBVER}${CLBL} version of CORPUS WORKBENCH (CWB)...${RST}"
+    echo "${CLBL}${BLD}==========> Installing ${CQPCWBRELEASETEXT}${CLBL} of the ${CORG}${CWBVER}${CLBL} branch of CORPUS WORKBENCH (CWB)...${RST}"
 
     ##############################
     # COMMON TASKS
@@ -1262,7 +1574,7 @@ fi
 if [[ "$CQPWEBSW" = 1 ]]; then
 
     echo ""
-    echo "${CLBL}${BLD}==========> Installing CQPWEB...${RST}"
+    echo "${CLBL}${BLD}==========> Installing ${CQPCWBRELEASETEXT}${CLBL} of the ${CORG}${CWBVER}${CLBL} branch of CQPweb...${RST}"
 
     ####################
     # NUKE PREVIOUSLY INSTALLED CQPWEB FILES IF DESIRED
@@ -1312,7 +1624,7 @@ if [[ "$CQPWEBSW" = 1 ]]; then
         fi
     else
         # DOWNLOAD EVERYTHING ANEW IF DIRECTORY DOESN'T EXIST
-        mkdir -p cqpweb
+        sudo mkdir -p cqpweb
         if [[ "$CQPCWBRELEASE" = 0 ]]; then
             # DOWNLOAD LATEST RELEASE
             sudo svn checkout http://svn.code.sf.net/p/cwb/code/gui/cqpweb/trunk cqpweb
@@ -1553,7 +1865,7 @@ EOF
 	 /*\$css_path_for_userpage           =   ;                                */
 	 \$homepage_use_corpus_categories  = false;
 	 \$homepage_welcome_message        = "YOUR_INFO_HERE";
-	 \$homepage_logo_left              = "";
+	 \$homepage_logo_left              = ;
 	 \$homepage_logo_right             = "css/img/ocwb-logo.transparent.gif";
 	 \$searchpage_corpus_name_suffix   = " · Powered by CQPweb";
 
@@ -1561,7 +1873,7 @@ EOF
 	 * USER ACCOUNT CREATION                                                  *
 	 * ---------------------------------------------------------------------- */
 	 \$allow_account_self_registration = true;
-	 \$account_create_contact          = "";
+	 \$account_create_contact          = ;
 	 \$account_create_captcha          = false;
 	 \$account_create_one_per_email    = flase;
 	 \$blowfish_cost                   = 13;
@@ -1964,6 +2276,51 @@ EOF
 
 
     ####################
+    # CREATE SCRIPT TO CALCULATE FREQUENCY LISTS OFFLINE
+    ####################
+
+    # DELETE ANY OLD VERSION OF THE SCRIPT
+    sudo rm -f "${HOME}/bin/calculate-frequencies-offline.sh"
+
+    # WRITE SCRIPT TO NEW FILE
+    sudo tee "${HOME}/bin/calculate-frequencies-offline.sh" <<- EOF >/dev/null 2>&1
+	#!/bin/bash
+
+	# CALCULATE FREQUENCIES OFFLINE
+	# This script was created automatically by ${SCRIPTNAME} on ${DATE}.
+
+	# EVALUATE USER INPUT AND MAKE SURE AN ARGUMENT (CORPUS NAME) WAS GIVEN
+	if [[ $# -ne 1 ]] || [[ $1 = "-h" ]]; then
+	    echo "SUMMARY: This script performs offline frequency calculations for a specified corpus."
+	    echo "USAGE:   ${CGRN}${BLD}calculate-frequencies-offline.sh ${CORG}corpus_name${RST}"
+	    echo "NOTE:    Corpus names must be lower-case."
+	    echo ""
+	    exit
+	else
+	    echo ""
+	    echo "${CLBL}${BLD}==========> Calculating frequencies for the ${$1} corpus...${RST}"
+
+	    # MOVE TO CORPUS DIRECTRY
+	    cd "/var/www/html/cqpweb/${1}" || exit
+
+	    # PERFORM THE CALULATIONS
+        php ../bin/offline-freqlists.php
+
+	echo "${CGRN}${BLD}==========> Frequencies for the ${1} corpus have been calculated!${RST}"
+	echo ""
+
+	fi
+
+EOF
+
+    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
+    sudo chown "${USER}:${USER}" "${HOME}/bin/calculate-frequencies-offline.sh"
+    sudo chmod ug+rwx "${HOME}/bin/calculate-frequencies-offline.sh"
+
+
+
+
+    ####################
     # CREATE BYMON MONITORING SCRIPT
     ####################
 
@@ -2010,15 +2367,14 @@ EOF
     sudo chown "${USER}:${USER}" "${HOME}/bin/bymon.sh"
     sudo chmod ug+rwx "${HOME}/bin/bymon.sh"
 
-
-
-
-
-    sudo
+    # TODO MAKE SURE THIS IS NOW WORKING PROPERLY!
+    # UPLOAD IMAGE FILE(S) TO SERVER
+    if ! [[ "${IMAGEUPLD}" = 0 || "${IMAGETARGET}" = "YOUR_INFO_HERE" || "${IMAGESOURCE}" = "YOUR_INFO_HERE" ]]; then
+        sudo wget -P "${IMAGETARGET}" "${IMAGESOURCE}"
+    fi
 
     # UPLOAD FAVICON TO SERVER
-    if ! [[ "${FAVICONUPLD}" = 0 ]] || [[ "${FAVICONURL}" = "YOUR_INFO_HERE" ]]; then
-        IMAGETARGET="/var/www/html/cqpweb/"
+    if ! [[ "${FAVICONUPLD}" = 0 || "${FAVICONURL}" = "YOUR_INFO_HERE" ]]; then
         sudo wget -P "${IMAGETARGET}" "${FAVICONURL}"
     fi
 
@@ -2036,7 +2392,7 @@ fi
 
 
 ########################################
-# CUSTOMIZE CERTAIN CQPWEB WEB PAGES +++++
+# CUSTOMIZE CERTAIN CQPWEB WEB PAGES
 ########################################
 if [[ "${CUSTOMIZEPAGES}" = 1 ]]; then
 
@@ -3058,4 +3414,7 @@ else
 fi
 
 
+       FREELINGESCLMODS=0   # Modify FreeLing's Chilean Spanish install.
 cwb_max_ram_usage_cli         = 1024
+  IMAGEUPLD=0               # Upload specified image to use as top left/right graphic in CQPweb. Set location and URL below.
+   FAVICONUPLD=0             # Upload favicon.ico to root of website?
