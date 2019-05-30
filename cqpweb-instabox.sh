@@ -3,8 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-05-29
-# VERSION:  64
+# DATE:     2019-05-30
+# VERSION:  66
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes a bare-bones install of Ubuntu 18.04 LTS and sets up Open Corpus
@@ -22,8 +22,11 @@ SCRIPTNAME="cqpweb-instabox.sh"
 
 # CHANGE LOG:
 #
+# v65
+# - CQPweb:          Fixed another bug in the offline frequency counting script.
+#
 # v64
-# - CQPweb:          Fixed a bug in the creation of the offline frequency counting script (in ~/bin).
+# - CQPweb:          Fixed bug in creation of offline frequency counting script (in ~/bin).
 #
 # v63
 # - All:             Added metaconfigurations and ability to select them from CLI.
@@ -65,7 +68,7 @@ SCRIPTNAME="cqpweb-instabox.sh"
 # SYSTEM CONFIGURATION
      UPGRADEOS=0    # Upgrade the OS and all its software packages to the latest versions.
    CONFIGSHELL=0    # Change default shell from dash to bash. Prevents certain errors.
-    CONFIGBASH=1    # Configure .bashrc with some useful things.
+    CONFIGBASH=0    # Configure .bashrc with some useful things.
       CONFIGTZ=0    # Set up time zone.
  CONFIGCONSOLE=0    # Configure the console's encoding, fonts, etc.
 CONFIGKEYBOARD=0    # Configure the console's keyboard
@@ -80,9 +83,9 @@ SSHGENNEWKEYS=0     # Generate new SSH keys and moduli. The latter will take aro
                     #    Do this only AFTER installing the SSH server with password access and uploading your pubic key to the server!
 
 # MAIN SOFTWARE SETS
-NECESSARYSW=1       # Install software necessary for the server to work.
-   USEFULSW=1       # Install software considered useful (though optional).
-   SERVERSW=1       # Install server software (monitoring, security and such).
+NECESSARYSW=0       # Install software necessary for the server to work.
+   USEFULSW=0       # Install software considered useful (though optional).
+   SERVERSW=0       # Install server software (monitoring, security and such).
 
 # CWB+CQPWEB+CORPORA
   CQPCWBRELEASE=0                           # Install a specific SubVersion release of CWB and CQPweb. "0" downloads latest version.
@@ -91,7 +94,7 @@ COMMONCQPWEBDIR="/usr/local/share/cqpweb"   # Common base dir for CQPweb. No tra
     NUKECORPORA=0                           # Delete ALL installed corpora. Not normally needed!
 
 # CWB
-CWB=1                    # Install CORPUS WORKBENCH (CWB)
+CWB=0                    # Install CORPUS WORKBENCH (CWB)
   CWBVER="latest"        # Version of CWB to install: 'latest' or 'stable' (WARNING: Currently, only 'latest' is supported).
   CWBPLATFORM="linux-64" # Platform to compile CWPweb for. OPTIONS: cygwin, darwin, darwin-64, darwin-brew, darwin-port-core2,
                          #   darwin-universal, linux, linux-64, linux-opteron, mingw-cross, mingw-native, solaris, unix
@@ -99,7 +102,7 @@ CWB=1                    # Install CORPUS WORKBENCH (CWB)
   CWBNUKEOLD=0           # Delete previously downloaded CWB files before downloading and installing again? Not normally needed!
 
 # CQPWEB
-CQPWEBSW=1                  # Install CQPWEB SERVER.
+CQPWEBSW=0                  # Install CQPWEB SERVER.
 ADMINUSER="YOUR_INFO_HERE"  # CQPweb administrator usernames. Separate multiple entries with | .
   DBUSER="cqpweb"           # Username for MYSQL database and webuser
   DBPWD="cqpweb"            # Password for MYSQL database and webuser
@@ -113,7 +116,7 @@ ADMINUSER="YOUR_INFO_HERE"  # CQPweb administrator usernames. Separate multiple 
 CUSTOMIZEPAGES=0            # Customize certain CQPweb web pages. Users will definitely want to customize this.
 
 # CORPORA
-CORPDICKENS=1       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
+CORPDICKENS=0       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
 
 # ADDITIONAL SYSTEM SOFTWARE
     MAILSW=0        # Install and configure the Postfix mail server.
@@ -153,10 +156,10 @@ OUTMAILSERVER="YOUR_INFO_HERE"    # OUTGOING MAIL SERVER URL
 MAILSERVERURL="YOUR_INFO_HERE"    # GENERAL URL OF MAIL SERVER.
 MAILSERVERURL="YOUR_INFO_HERE"    # GENERAL URL OF MAIL SERVER.
 MAILSERVERPWD="YOUR_INFO_HERE"    # PASSWORD FOR E-MAIL SERVER. YOU CAN DELETE THIS
-                                  #   AFTER INSTALLING THE MAIL SERVER, OR YOU CAN LEAVE IT
-                                  #   EMPTY AND BE PROMPTED FOR A PASSWORD DURING INSTALLATION.
-PERSONALMAILADDR="YOUR_INFO_HERE" # YOUR PERSONAL E-MAIL ADDRESS. IF YOU WANT, YOU CAN USE
-                                  #   THE SAME ADDRESS AS FOR ADMIN, OR VICE VERSA.
+                                                 #   AFTER INSTALLING THE MAIL SERVER, OR YOU CAN LEAVE IT
+                                                 #   EMPTY AND BE PROMPTED FOR A PASSWORD DURING INSTALLATION.
+PERSONALMAILADDR="YOUR_INFO_HERE"      # YOUR PERSONAL E-MAIL ADDRESS. IF YOU WANT, YOU CAN USE
+                                       #   THE SAME ADDRESS AS FOR ADMIN, OR VICE VERSA.
 
 # PORTS
 # Comment out a port to disable it and automatically close it with UFW.
@@ -2301,10 +2304,10 @@ EOF
 	    exit
 	else
 	    echo ""
-	    echo "${CLBL}${BLD}==========> Calculating frequencies for the \${$1} corpus...${RST}"
+	    echo "${CLBL}${BLD}==========> Calculating frequencies for the \${1} corpus...${RST}"
 
 	    # MOVE TO CORPUS DIRECTRY
-	    cd "/var/www/html/cqpweb/${1}" || exit
+	    cd "/var/www/html/cqpweb/\${1}" || exit
 
 	    # PERFORM THE CALCULATIONS
 	    php ../bin/offline-freqlists.php
