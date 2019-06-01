@@ -3,8 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-05-30
-# VERSION:  66
+# DATE:     2019-06-01
+# VERSION:  67
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes a bare-bones install of Ubuntu 18.04 LTS and sets up Open Corpus
@@ -21,6 +21,13 @@ SCRIPTNAME="cqpweb-instabox.sh"
 #              no warranties. Bug reports are most welcome!
 
 # CHANGE LOG:
+
+# v67
+# - CQPweb:          Added creation of script to upgrade databases.
+#
+# v66
+# - SSH PubKey:      SSH Public Key installation routine now installs certain software that would
+#                    otherwise only be installed if user chooses the "server" installation options.
 #
 # v65
 # - CQPweb:          Fixed another bug in the offline frequency counting script.
@@ -66,9 +73,9 @@ SCRIPTNAME="cqpweb-instabox.sh"
 ################################################################################
 
 # SYSTEM CONFIGURATION
-     UPGRADEOS=0    # Upgrade the OS and all its software packages to the latest versions.
+     UPGRADEOS=1    # Upgrade the OS and all its software packages to the latest versions.
    CONFIGSHELL=0    # Change default shell from dash to bash. Prevents certain errors.
-    CONFIGBASH=0    # Configure .bashrc with some useful things.
+    CONFIGBASH=1    # Configure .bashrc with some useful things.
       CONFIGTZ=0    # Set up time zone.
  CONFIGCONSOLE=0    # Configure the console's encoding, fonts, etc.
 CONFIGKEYBOARD=0    # Configure the console's keyboard
@@ -83,9 +90,9 @@ SSHGENNEWKEYS=0     # Generate new SSH keys and moduli. The latter will take aro
                     #    Do this only AFTER installing the SSH server with password access and uploading your pubic key to the server!
 
 # MAIN SOFTWARE SETS
-NECESSARYSW=0       # Install software necessary for the server to work.
-   USEFULSW=0       # Install software considered useful (though optional).
-   SERVERSW=0       # Install server software (monitoring, security and such).
+NECESSARYSW=1       # Install software necessary for the server to work.
+   USEFULSW=1       # Install software considered useful (though optional).
+   SERVERSW=1       # Install server software (monitoring, security and such).
 
 # CWB+CQPWEB+CORPORA
   CQPCWBRELEASE=0                           # Install a specific SubVersion release of CWB and CQPweb. "0" downloads latest version.
@@ -94,7 +101,7 @@ COMMONCQPWEBDIR="/usr/local/share/cqpweb"   # Common base dir for CQPweb. No tra
     NUKECORPORA=0                           # Delete ALL installed corpora. Not normally needed!
 
 # CWB
-CWB=0                    # Install CORPUS WORKBENCH (CWB)
+CWB=1                    # Install CORPUS WORKBENCH (CWB)
   CWBVER="latest"        # Version of CWB to install: 'latest' or 'stable' (WARNING: Currently, only 'latest' is supported).
   CWBPLATFORM="linux-64" # Platform to compile CWPweb for. OPTIONS: cygwin, darwin, darwin-64, darwin-brew, darwin-port-core2,
                          #   darwin-universal, linux, linux-64, linux-opteron, mingw-cross, mingw-native, solaris, unix
@@ -102,7 +109,7 @@ CWB=0                    # Install CORPUS WORKBENCH (CWB)
   CWBNUKEOLD=0           # Delete previously downloaded CWB files before downloading and installing again? Not normally needed!
 
 # CQPWEB
-CQPWEBSW=0                  # Install CQPWEB SERVER.
+CQPWEBSW=1                  # Install CQPWEB SERVER.
 ADMINUSER="YOUR_INFO_HERE"  # CQPweb administrator usernames. Separate multiple entries with | .
   DBUSER="cqpweb"           # Username for MYSQL database and webuser
   DBPWD="cqpweb"            # Password for MYSQL database and webuser
@@ -116,7 +123,7 @@ ADMINUSER="YOUR_INFO_HERE"  # CQPweb administrator usernames. Separate multiple 
 CUSTOMIZEPAGES=0            # Customize certain CQPweb web pages. Users will definitely want to customize this.
 
 # CORPORA
-CORPDICKENS=0       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
+CORPDICKENS=1       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
 
 # ADDITIONAL SYSTEM SOFTWARE
     MAILSW=0        # Install and configure the Postfix mail server.
@@ -156,10 +163,10 @@ OUTMAILSERVER="YOUR_INFO_HERE"    # OUTGOING MAIL SERVER URL
 MAILSERVERURL="YOUR_INFO_HERE"    # GENERAL URL OF MAIL SERVER.
 MAILSERVERURL="YOUR_INFO_HERE"    # GENERAL URL OF MAIL SERVER.
 MAILSERVERPWD="YOUR_INFO_HERE"    # PASSWORD FOR E-MAIL SERVER. YOU CAN DELETE THIS
-                                                 #   AFTER INSTALLING THE MAIL SERVER, OR YOU CAN LEAVE IT
-                                                 #   EMPTY AND BE PROMPTED FOR A PASSWORD DURING INSTALLATION.
-PERSONALMAILADDR="YOUR_INFO_HERE"      # YOUR PERSONAL E-MAIL ADDRESS. IF YOU WANT, YOU CAN USE
-                                       #   THE SAME ADDRESS AS FOR ADMIN, OR VICE VERSA.
+                                  #   AFTER INSTALLING THE MAIL SERVER, OR YOU CAN LEAVE IT
+                                  #   EMPTY AND BE PROMPTED FOR A PASSWORD DURING INSTALLATION.
+PERSONALMAILADDR="YOUR_INFO_HERE" # YOUR PERSONAL E-MAIL ADDRESS. IF YOU WANT, YOU CAN USE
+                                  #   THE SAME ADDRESS AS FOR ADMIN, OR VICE VERSA.
 
 # PORTS
 # Comment out a port to disable it and automatically close it with UFW.
@@ -1097,16 +1104,17 @@ if [[ "$SSHPWDSW" = 1 ]]; then
 
         # ADD MESSAGE TO /ETC/PROFILE
         sudo tee -a /etc/profile <<- EOF >/dev/null 2>&1
-		# LOGIN MESSAGE
-		BOLDWHITE='\033[1;37m'
+		# LOGIN MESSAGE added by ${SCRIPTNAME} on ${DATE}
+		BOLDWHITE='\033[1;36m'
 		NC='\033[0m'
 		MYUSER=\$(whoami)
 		MYHOST=\$(hostname)
+		echo ""
 		MYIP=\$(wget -qO - http://wtfismyip.com/text)
 		toilet -f ivrit -t -F border:crop \$MYHOST | lolcat -p 1
 		landscape-sysinfo
 		echo ""
-		echo -e "You are \${BOLDWHITE}\$MYUSER@\$MYHOST\${NC} on \${BOLDWHITE}\$MYIP\${NC}."
+		echo -e "You are \${BOLDWHITE}\${MYUSER}@\${MYHOST}\${NC} on \${BOLDWHITE}\${MYIP}\${NC}."
 		echo ""
 
 EOF
@@ -1158,6 +1166,12 @@ fi
 # INSTALL AND CONFIGURE SSH ACCESS VIA *PUBLIC KEY*
 ########################################
 if [[ "$SSHKEYSW" = 1 ]]; then
+
+    sudo apt update -y
+
+    sudo apt upgrade -y
+
+    sudo apt install -y --install-recommends figlet iftop landscape-common lolcat mytop toilet
 
     echo ""
     echo "${CRED}${BLD}==========> Configuring SSH VIA PUBLIC KEY ==========${RST}"
@@ -2210,6 +2224,40 @@ EOF
     # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
     sudo chown "${USER}:${USER}" "${HOME}/bin/upd-all.sh"
     sudo chmod ug+rwx "${HOME}/bin/upd-all.sh"
+
+
+    ####################
+    # CREATE SCRIPT TO UPGRADE DATABASE
+    ####################
+
+    # DELETE ANY OLD VERSION OF THE SCRIPT
+    sudo rm -f "${HOME}/bin/upd-database.sh"
+
+    # WRITE SCRIPT TO NEW FILE
+    sudo tee "${HOME}/bin/upd-database.sh" <<- EOF >/dev/null 2>&1
+	#!/bin/bash
+
+	# UPGRADE DATABASE
+	# This script was created automatically by ${SCRIPTNAME} on ${DATE}.
+
+	echo ""
+	echo "${CLBL}${BLD}==========> UPGRADING CQPWEB DATABASE...${RST}"
+
+	# MOVE TO CQPWEB BINARY DIRECTORY
+	cd /var/www/html/cqpweb/bin || exit
+
+	# RUN UPDATER
+	sudo php upgrade-database.php
+
+	echo "${CGRN}${BLD}==========> CQPWEB DATABASE HAS BEEN UPGRADED${RST}"
+	echo ""
+
+EOF
+
+    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
+    sudo chown "${USER}:${USER}" "${HOME}/bin/upd-database.sh"
+    sudo chmod ug+rwx "${HOME}/bin/upd-database.sh"
+
 
 
     ####################
