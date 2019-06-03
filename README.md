@@ -1,5 +1,9 @@
 # CQPweb-Instabox
-Script that sets up and configures an entire [CQPweb](http://cwb.sourceforge.net/cqpweb.php) server installation. 
+Script that sets up and configures an entire [CQPweb](http://cwb.sourceforge.net/cqpweb.php) server installation. It has been tested on the following distros:
+*	Ubuntu Server 18.04 LTS
+*	Ubuntu Alternate Server 18.04 LTS
+*	Ubuntu Desktop 18.04 LTS
+*	Lubuntu Desktop 18.04
 
 # Instructions for setting up your own personal CQPweb In A Box.
 As of v. 63, CQPweb-Instabox is even easier to use -- it allows you to perform one of four pre-defined install types, plus a default install that includes whatever software and configuration is set to `1` in the script file (this allows you to customize your preferences down to the last detail and then deploy this install as many times as you wish).

@@ -4,7 +4,7 @@ SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
 # DATE:     2019-06-03
-# VERSION:  68
+# VERSION:  69
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes a bare-bones install of Ubuntu 18.04 LTS and sets up Open Corpus
@@ -22,6 +22,9 @@ SCRIPTNAME="cqpweb-instabox.sh"
 
 # CHANGE LOG:
 
+# v69
+# - CQPweb:          Refactored code so that favicon and TL/TR image can be uploaded independently.
+#
 # v68
 # - CQPweb:          Added ability to customize the font used by modifying all CSS files.
 # - CQPweb:          Modified upd-all.sh script so it now automatically updates the CQPweb database.
@@ -120,21 +123,20 @@ ADMINUSER="YOUR_INFO_HERE"  # CQPweb administrator usernames. Separate multiple 
   DBUSER="cqpweb"           # Username for MYSQL database and webuser
   DBPWD="cqpweb"            # Password for MYSQL database and webuser
   CQPMAKENEWDB=1            # Delete existing database and make a new one? (NECESSARY for new installs; normally undesirable otherwise).
-  IMAGEUPLD=0               # Upload specified image to use as top left/right graphic in CQPweb. Set location and URL below.
-  IMAGESOURCE="YOUR_INFO_HERE" # URL of top left/right logo image source file.
-  IMAGETARGET="YOUR_INFO_HERE" # Destination path of top left/right logo image file.
-  FAVICONUPLD=0             # Upload favicon.ico to root of website?
-  FAVICONURL="YOUR_INFO_HERE" # Source URL of favicon.ico.
   CQPWEBNUKEOLD=0           # Delete previously downloaded CQPweb files before downloading and installing again? Not normally needed!
 
 # CQPWEB OPTIONS AND CUSTOMIZATIONS
+IMAGEUPLD=1                 # Upload specified image to use as top left/right graphic in CQPweb. Set location and URL below.
+  IMAGESOURCE="YOUR_INFO_HERE" # URL of top left/right logo image source file.
+  IMAGETARGET="YOUR_INFO_HERE" # Destination path of top left/right logo image file.
+FAVICONUPLD=1               # Upload favicon.ico to root of website?
+  FAVICONURL="YOUR_INFO_HERE" # Source URL of favicon.ico.
 CREATECQPWEBSCRIPTS=0           # Create a series of useful scripts in ~/bin.
      CUSTOMIZEPAGES=0           # Customize certain CQPweb web pages. Users will definitely want to customize this.
      CUSTOMIZEFONTS=0           # Modify CSS files in order to use a user-specified Google web font.
      WEBFONTNAME="YOUR_INFO_HERE" # Name of web font. Check out https://fonts.google.com/ for more. Firefox doesn't seem to use
                                 # web fonts loaded this way (via @import).
                                 # CONFIRMED WORKING: Arimo, Fira Sans, Lato, Raleway, Raleway, Noto Sans, Roboto, Roboto Condensed, Open Sans, Source Code Pro (Typewriter), PT Sans
-
 # CORPORA
 CORPDICKENS=0       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
 
@@ -1958,29 +1960,7 @@ EOF
     cd /var/www/html/cqpweb/bin/ || exit
     sudo php autosetup.php
 
-    # TODO MAKE SURE THIS IS NOW WORKING PROPERLY!
-    # UPLOAD IMAGE FILE(S) TO SERVER
-    if ! [[ "${IMAGEUPLD}" = 0 || "${IMAGETARGET}" = "YOUR_INFO_HERE" || "${IMAGESOURCE}" = "YOUR_INFO_HERE" ]]; then
-        sudo wget -P "${IMAGETARGET}" "${IMAGESOURCE}"
-    fi
-
-    # UPLOAD FAVICON TO SERVER
-    if ! [[ "${FAVICONUPLD}" = 0 || "${FAVICONURL}" = "YOUR_INFO_HERE" ]]; then
-        sudo wget -P "${IMAGETARGET}" "${FAVICONURL}"
-    fi
-
-    echo "${CGRN}${BLD}==========> CQPWEB installation finished.${RST}"
-    echo "${CWHT}${BLD}            You will find useful scripts in ${CORG}${HOME}/bin${CWHT}.${RST}"
-    echo "${CWHT}${BLD}            To use CQPweb, open ${CORG}http://${INTERNALIP}${CWHT} in your browser.${RST}"
-    echo ""
-    echo "${CRED}${BLD}            Kindly reboot now.${RST}"
-    echo ""
-    read -r -p "${CORG}${BLD}            Press any key to continue (or wait 10 seconds)... ${RST}" -n 1 -t 10 -s
-    echo ""
-else
-    echo "${CORG}${BLD}==========> Skipping CQPWEB installation...${RST}"
 fi
-
 
 ########################################
 # CREATE SCRIPTS ON CQPWEB SERVER
@@ -2472,6 +2452,54 @@ EOF
     echo ""
 else
     echo "${CORG}${BLD}==========> Skipping CQPWEB SCRIPT installation...${RST}"
+fi
+
+
+########################################
+# UPLOAD CUSTOM TL/TR IMAGE
+########################################
+if [[ "${IMAGEUPLD}" = 1 ]]; then
+
+    # UPLOAD IMAGE FILE(S) TO SERVER IF AN ACTUAL URL HAS BEEN SET
+    if ! [[ "${IMAGETARGET}" = "YOUR_INFO_HERE" && "${IMAGESOURCE}" = "YOUR_INFO_HERE" ]]; then
+        echo ""
+        echo "${CLBL}${BLD}==========> Uploading custom TL/TR IMAGE...${RST}"
+
+        sudo wget -P "${IMAGETARGET}" "${IMAGESOURCE}"
+
+        echo "${CGRN}${BLD}==========> Custom TL/TR IMAGE upload finished.${RST}"
+        echo ""
+    else
+        echo ""
+        echo "${CRED}${BLD}==========> You must set valid source and target paths for the TL/TR IMAGE!${RST}"
+    fi
+
+else
+    echo "${CORG}${BLD}==========> Skipping custom TL/TR IMAGE upload...${RST}"
+fi
+
+
+########################################
+# UPLOAD FAVICON
+########################################
+if [[ "${FAVICONUPLD}" = 1 ]]; then
+
+    # UPLOAD IMAGE FILE(S) TO SERVER IF AN ACTUAL URL HAS BEEN SET
+    if ! [[ "${IMAGETARGET}" = "YOUR_INFO_HERE" && "${FAVICONURL}" = "YOUR_INFO_HERE" ]]; then
+        echo ""
+        echo "${CLBL}${BLD}==========> Uploading FAVICON...${RST}"
+
+        sudo wget -P "${IMAGETARGET}" "${FAVICONURL}"
+
+        echo "${CGRN}${BLD}==========> FAVICON upload finished.${RST}"
+        echo ""
+    else
+        echo ""
+        echo "${CRED}${BLD}==========> You must set valid source and target paths for the FAVICON!${RST}"
+    fi
+
+else
+    echo "${CORG}${BLD}==========> Skipping FAVICON upload...${RST}"
 fi
 
 
