@@ -3,8 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-06-01
-# VERSION:  67
+# DATE:     2019-06-03
+# VERSION:  68
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes a bare-bones install of Ubuntu 18.04 LTS and sets up Open Corpus
@@ -22,6 +22,12 @@ SCRIPTNAME="cqpweb-instabox.sh"
 
 # CHANGE LOG:
 
+# v68
+# - CQPweb:          Added ability to customize the font used by modifying all CSS files.
+# - CQPweb:          Modified upd-all.sh script so it now automatically updates the CQPweb database.
+# - CQPweb:          Refactored code that creates scripts in ~/bin so it can be run independently of
+#                    the rest of cqpweb-instabox.sh.
+#
 # v67
 # - CQPweb:          Added creation of script to upgrade databases.
 #
@@ -73,9 +79,9 @@ SCRIPTNAME="cqpweb-instabox.sh"
 ################################################################################
 
 # SYSTEM CONFIGURATION
-     UPGRADEOS=1    # Upgrade the OS and all its software packages to the latest versions.
+     UPGRADEOS=0    # Upgrade the OS and all its software packages to the latest versions.
    CONFIGSHELL=0    # Change default shell from dash to bash. Prevents certain errors.
-    CONFIGBASH=1    # Configure .bashrc with some useful things.
+    CONFIGBASH=0    # Configure .bashrc with some useful things.
       CONFIGTZ=0    # Set up time zone.
  CONFIGCONSOLE=0    # Configure the console's encoding, fonts, etc.
 CONFIGKEYBOARD=0    # Configure the console's keyboard
@@ -90,9 +96,9 @@ SSHGENNEWKEYS=0     # Generate new SSH keys and moduli. The latter will take aro
                     #    Do this only AFTER installing the SSH server with password access and uploading your pubic key to the server!
 
 # MAIN SOFTWARE SETS
-NECESSARYSW=1       # Install software necessary for the server to work.
-   USEFULSW=1       # Install software considered useful (though optional).
-   SERVERSW=1       # Install server software (monitoring, security and such).
+NECESSARYSW=0       # Install software necessary for the server to work.
+   USEFULSW=0       # Install software considered useful (though optional).
+   SERVERSW=0       # Install server software (monitoring, security and such).
 
 # CWB+CQPWEB+CORPORA
   CQPCWBRELEASE=0                           # Install a specific SubVersion release of CWB and CQPweb. "0" downloads latest version.
@@ -101,7 +107,7 @@ COMMONCQPWEBDIR="/usr/local/share/cqpweb"   # Common base dir for CQPweb. No tra
     NUKECORPORA=0                           # Delete ALL installed corpora. Not normally needed!
 
 # CWB
-CWB=1                    # Install CORPUS WORKBENCH (CWB)
+CWB=0                    # Install CORPUS WORKBENCH (CWB)
   CWBVER="latest"        # Version of CWB to install: 'latest' or 'stable' (WARNING: Currently, only 'latest' is supported).
   CWBPLATFORM="linux-64" # Platform to compile CWPweb for. OPTIONS: cygwin, darwin, darwin-64, darwin-brew, darwin-port-core2,
                          #   darwin-universal, linux, linux-64, linux-opteron, mingw-cross, mingw-native, solaris, unix
@@ -109,21 +115,28 @@ CWB=1                    # Install CORPUS WORKBENCH (CWB)
   CWBNUKEOLD=0           # Delete previously downloaded CWB files before downloading and installing again? Not normally needed!
 
 # CQPWEB
-CQPWEBSW=1                  # Install CQPWEB SERVER.
+CQPWEBSW=0                  # Install CQPWEB SERVER.
 ADMINUSER="YOUR_INFO_HERE"  # CQPweb administrator usernames. Separate multiple entries with | .
   DBUSER="cqpweb"           # Username for MYSQL database and webuser
   DBPWD="cqpweb"            # Password for MYSQL database and webuser
   CQPMAKENEWDB=1            # Delete existing database and make a new one? (NECESSARY for new installs; normally undesirable otherwise).
-  IMAGEUPLD=1               # Upload specified image to use as top left/right graphic in CQPweb. Set location and URL below.
+  IMAGEUPLD=0               # Upload specified image to use as top left/right graphic in CQPweb. Set location and URL below.
   IMAGESOURCE="YOUR_INFO_HERE" # URL of top left/right logo image source file.
   IMAGETARGET="YOUR_INFO_HERE" # Destination path of top left/right logo image file.
-  FAVICONUPLD=1             # Upload favicon.ico to root of website?
-   FAVICONURL="YOUR_INFO_HERE" # Source URL of favicon.ico.
+  FAVICONUPLD=0             # Upload favicon.ico to root of website?
+  FAVICONURL="YOUR_INFO_HERE" # Source URL of favicon.ico.
   CQPWEBNUKEOLD=0           # Delete previously downloaded CQPweb files before downloading and installing again? Not normally needed!
-CUSTOMIZEPAGES=0            # Customize certain CQPweb web pages. Users will definitely want to customize this.
+
+# CQPWEB OPTIONS AND CUSTOMIZATIONS
+CREATECQPWEBSCRIPTS=0           # Create a series of useful scripts in ~/bin.
+     CUSTOMIZEPAGES=0           # Customize certain CQPweb web pages. Users will definitely want to customize this.
+     CUSTOMIZEFONTS=0           # Modify CSS files in order to use a user-specified Google web font.
+     WEBFONTNAME="YOUR_INFO_HERE" # Name of web font. Check out https://fonts.google.com/ for more. Firefox doesn't seem to use
+                                # web fonts loaded this way (via @import).
+                                # CONFIRMED WORKING: Arimo, Fira Sans, Lato, Raleway, Raleway, Noto Sans, Roboto, Roboto Condensed, Open Sans, Source Code Pro (Typewriter), PT Sans
 
 # CORPORA
-CORPDICKENS=1       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
+CORPDICKENS=0       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
 
 # ADDITIONAL SYSTEM SOFTWARE
     MAILSW=0        # Install and configure the Postfix mail server.
@@ -163,10 +176,10 @@ OUTMAILSERVER="YOUR_INFO_HERE"    # OUTGOING MAIL SERVER URL
 MAILSERVERURL="YOUR_INFO_HERE"    # GENERAL URL OF MAIL SERVER.
 MAILSERVERURL="YOUR_INFO_HERE"    # GENERAL URL OF MAIL SERVER.
 MAILSERVERPWD="YOUR_INFO_HERE"    # PASSWORD FOR E-MAIL SERVER. YOU CAN DELETE THIS
-                                  #   AFTER INSTALLING THE MAIL SERVER, OR YOU CAN LEAVE IT
-                                  #   EMPTY AND BE PROMPTED FOR A PASSWORD DURING INSTALLATION.
-PERSONALMAILADDR="YOUR_INFO_HERE" # YOUR PERSONAL E-MAIL ADDRESS. IF YOU WANT, YOU CAN USE
-                                  #   THE SAME ADDRESS AS FOR ADMIN, OR VICE VERSA.
+                                                 #   AFTER INSTALLING THE MAIL SERVER, OR YOU CAN LEAVE IT
+                                                 #   EMPTY AND BE PROMPTED FOR A PASSWORD DURING INSTALLATION.
+PERSONALMAILADDR="YOUR_INFO_HERE"      # YOUR PERSONAL E-MAIL ADDRESS. IF YOU WANT, YOU CAN USE
+                                       #   THE SAME ADDRESS AS FOR ADMIN, OR VICE VERSA.
 
 # PORTS
 # Comment out a port to disable it and automatically close it with UFW.
@@ -1032,6 +1045,11 @@ if [[ "$SSHPWDSW" = 1 ]]; then
     read -r -p "            ${CORG}${BLD}Do you understand you need to switch to public key authentication ASAP? (y/n) ${RST}" ANSWER
 
     if [[ "$ANSWER" = [yY] || "$ANSWER" = [yY][eE][sS] ]]; then
+
+        # UPDATE AND INSTALL SOFTWARE
+        sudo apt update -y
+        sudo apt upgrade -y
+        sudo apt install -y --install-recommends figlet openssh-sftp-server ssh-askpass ssh-audit sshfs landscape-common lolcat toilet toilet-fonts
 
         # RESTORE BACKUP SSH_CONFIG IF IT EXISTS, ELSE MAKE BACKUP
         if [[ -f /etc/ssh/ssh_config.BAK ]]; then
@@ -1940,14 +1958,43 @@ EOF
     cd /var/www/html/cqpweb/bin/ || exit
     sudo php autosetup.php
 
+    # TODO MAKE SURE THIS IS NOW WORKING PROPERLY!
+    # UPLOAD IMAGE FILE(S) TO SERVER
+    if ! [[ "${IMAGEUPLD}" = 0 || "${IMAGETARGET}" = "YOUR_INFO_HERE" || "${IMAGESOURCE}" = "YOUR_INFO_HERE" ]]; then
+        sudo wget -P "${IMAGETARGET}" "${IMAGESOURCE}"
+    fi
 
-    ########################################
-    # CREATE MAINTENANCE SCRIPTS ON SERVER
-    ########################################
-    # This creates several scripts that the user can use to perform maintenance tasks.
+    # UPLOAD FAVICON TO SERVER
+    if ! [[ "${FAVICONUPLD}" = 0 || "${FAVICONURL}" = "YOUR_INFO_HERE" ]]; then
+        sudo wget -P "${IMAGETARGET}" "${FAVICONURL}"
+    fi
 
-    # Make the ~/bin directory in case it doesn't already exist
+    echo "${CGRN}${BLD}==========> CQPWEB installation finished.${RST}"
+    echo "${CWHT}${BLD}            You will find useful scripts in ${CORG}${HOME}/bin${CWHT}.${RST}"
+    echo "${CWHT}${BLD}            To use CQPweb, open ${CORG}http://${INTERNALIP}${CWHT} in your browser.${RST}"
+    echo ""
+    echo "${CRED}${BLD}            Kindly reboot now.${RST}"
+    echo ""
+    read -r -p "${CORG}${BLD}            Press any key to continue (or wait 10 seconds)... ${RST}" -n 1 -t 10 -s
+    echo ""
+else
+    echo "${CORG}${BLD}==========> Skipping CQPWEB installation...${RST}"
+fi
+
+
+########################################
+# CREATE SCRIPTS ON CQPWEB SERVER
+########################################
+# This creates several useful scripts in ~/bin.
+
+if [[ ${CREATECQPWEBSCRIPTS} = 1 ]]; then
+
+    echo ""
+    echo "${CLBL}${BLD}==========> Installing CQPWEB SCRIPTS...${RST}"
+
+    # MAKE THE ~/BIN DIRECTORY IN CASE IT DOESN'T ALREADY EXIST
     sudo mkdir -p "${HOME}/bin"
+
 
     ####################
     # CREATE SCRIPT TO UPDATE CWB
@@ -2215,8 +2262,9 @@ EOF
 	upd-cwbdoc.sh
 	upd-cwbperl.sh
 	upd-cqpweb.sh
+	upd-database.sh
 
-	echo "${CGRN}${BLD}==========> ALL CQP AND CWB COMPONENTS HAVE BEEN UPDATED${RST}"
+	echo "${CGRN}${BLD}==========> ALL CQP AND CWB COMPONENTS, INCLUDING THE DATABASE, HAVE BEEN UPDATED${RST}"
 	echo ""
 
 EOF
@@ -2372,8 +2420,6 @@ EOF
     sudo chmod ug+rwx "${HOME}/bin/calculate-frequencies-offline.sh"
 
 
-
-
     ####################
     # CREATE BYMON MONITORING SCRIPT
     ####################
@@ -2421,27 +2467,11 @@ EOF
     sudo chown "${USER}:${USER}" "${HOME}/bin/bymon.sh"
     sudo chmod ug+rwx "${HOME}/bin/bymon.sh"
 
-    # TODO MAKE SURE THIS IS NOW WORKING PROPERLY!
-    # UPLOAD IMAGE FILE(S) TO SERVER
-    if ! [[ "${IMAGEUPLD}" = 0 || "${IMAGETARGET}" = "YOUR_INFO_HERE" || "${IMAGESOURCE}" = "YOUR_INFO_HERE" ]]; then
-        sudo wget -P "${IMAGETARGET}" "${IMAGESOURCE}"
-    fi
-
-    # UPLOAD FAVICON TO SERVER
-    if ! [[ "${FAVICONUPLD}" = 0 || "${FAVICONURL}" = "YOUR_INFO_HERE" ]]; then
-        sudo wget -P "${IMAGETARGET}" "${FAVICONURL}"
-    fi
-
-    echo "${CGRN}${BLD}==========> CQPWEB installation finished.${RST}"
+    echo "${CGRN}${BLD}==========> CQPWEB SCRIPTS installation finished.${RST}"
     echo "${CWHT}${BLD}            You will find useful scripts in ${CORG}${HOME}/bin${CWHT}.${RST}"
-    echo "${CWHT}${BLD}            To use CQPweb, open ${CORG}http://${INTERNALIP}${CWHT} in your browser.${RST}"
-    echo ""
-    echo "${CRED}${BLD}            Kindly reboot now.${RST}"
-    echo ""
-    read -r -p "${CORG}${BLD}            Press any key to continue (or wait 10 seconds)... ${RST}" -n 1 -t 10 -s
     echo ""
 else
-    echo "${CORG}${BLD}==========> Skipping CQPWEB installation...${RST}"
+    echo "${CORG}${BLD}==========> Skipping CQPWEB SCRIPT installation...${RST}"
 fi
 
 
@@ -2449,6 +2479,9 @@ fi
 # CUSTOMIZE CERTAIN CQPWEB WEB PAGES
 ########################################
 if [[ "${CUSTOMIZEPAGES}" = 1 ]]; then
+
+    echo ""
+    echo "${CLBL}${BLD}==========> Customizing CQP WEBPAGES...${RST}"
 
     ########## CUSTOMIZE /lib/useracct-forms.php
     CURRFILE="/var/www/html/cqpweb/lib/useracct-forms.php"
@@ -2458,12 +2491,77 @@ if [[ "${CUSTOMIZEPAGES}" = 1 ]]; then
         sudo cp "${CURRFILE}" "${CURRFILE}.BAK"
     fi
 
-    # Customize
+    # CUSTOMIZE FILES
     sudo perl -i -p0e 's/you should use it to sign up<\/strong>\.[\n\t ]+?<\/p>[\n\t ]+?<p .+?>[\n\t ]+?<.+?>[\n\t ]+?This is because your access/you should use it to sign up<\/strong>. This is because your access/gms' "${CURRFILE}"
 
     sudo perl -i -p0e 's/<tr>[\n\t ]+?<td class="concordgrey" colspan="2">[\n\t ]+?<p class="spacer">&nbsp;<\/p>[\n\t ]+?<p>[\n\t ]+?The following three questions.+?<\/tr>/\n/gms' "${CURRFILE}"
 
+    echo "${CGRN}${BLD}==========> CQP WEBPAGE customization finished.${RST}"
+    echo ""
 fi
+
+
+########################################
+# CUSTOMIZE WEB FONTS IN CQPWEB
+# NOTE: This code is potentially fragile -- if the CSS files
+#       being modified are changed much, it could break.
+########################################
+if [[ "${CUSTOMIZEFONTS}" = 1 ]]; then
+
+    if ! [[ "${WEBFONTNAME}" = "YOUR_INFO_HERE" ]]; then
+        echo ""
+        echo "${CLBL}${BLD}==========> Customizing CQP WEB FONTS...${RST}"
+
+        # SET BASE PATH OF CQPWEB. NO SLASH AT END, PLEASE.
+        BASEPATH="/var/www/html/cqpweb"
+
+        # MAKE BACKUP OF CSS DIRECTORY IF IT DOESN'T EXIST. OTHERWISE, RESTORE BACKUP BEFORE PROCEEDING.
+        if ! [[ -d "${BASEPATH}/css.BAK" ]]; then
+            sudo cp -r "${BASEPATH}/css" "${BASEPATH}/css.BAK"
+        else
+            sudo rm -rf "${BASEPATH}/css"
+            sudo cp -r "${BASEPATH}/css.BAK" "${BASEPATH}/css"
+        fi
+
+        # CREATE STRINGS TO PUT IN CSS FILES
+        WEBFONTNAMENOSPACES=$(echo "${WEBFONTNAME}" | sed 's/ /+/g')
+        WEBFONTIMPORT="\@import url('https://fonts.googleapis.com/css?family=${WEBFONTNAMENOSPACES}&display=swap');"
+
+        # MOVE INTO CSS DIRECTORY
+        cd "${BASEPATH}/css" || exit
+
+        # SET NULLGLOB SO THAT A NON-MATCHING PATTERN EXPANDS TO AN EMPTY STRING RATHER THAN THE LITERAL STRING
+        shopt -s nullglob
+
+        # LOOP THROUGH CSS FILES IN CSS DIRECTORY
+        for CURRFILE in *.css;
+        do
+            # BREAK IF THERE ARE NO RESULTS
+            [ -f "$CURRFILE" ] || break
+
+            # ADD CODE TO DOWNLOAD THE WEB FONT
+            sudo perl -i -p0e "s|/\* end of resets \*/|/* end of resets */\n\n# IMPORT WEB FONT FROM EXTERNAL URL\n${WEBFONTIMPORT}\n|gms" "${CURRFILE}"
+
+            # STANDARDIZE FONT FAMILY LISTS (SOME ONLY HAVE VERDANA, WHILE OTHERS HAVE A FULLER LIST)
+            sudo perl -i -p0e "s/Verdana,Arial,Helvetica,sans-serif;/Arial,Helvetica,Verdana,sans-serif;/gi" "${CURRFILE}"
+            sudo perl -i -p0e "s/Verdana;/Arial,Helvetica,Verdana,sans-serif;/gi" "${CURRFILE}"
+
+            # ADD USER-SELECTED WEB FONT TO FONT FAMILY LISTS
+            sudo perl -i -p0e "s/Arial,Helvetica,Verdana,sans-serif;/'${WEBFONTNAME}',Arial,Helvetica,Verdana,sans-serif !important;/gi" "${CURRFILE}"
+        done
+
+        echo "${CGRN}${BLD}==========> CQP WEB FONT customization finished.${RST}"
+        echo ""
+    else
+        echo ""
+        echo "${CRED}${BLD}==========> You chose to customize the font in the CQPWEB CSS files, but you did not specify${RST}"
+        echo "${CRED}${BLD}            a font. Please edit ${SCRIPTNAME} and set the ${CORG}WEBFONTNAME${CRED} variable.${RST}"
+        echo ""
+    fi
+
+fi
+
+
 
 
 ########################################
