@@ -4,7 +4,7 @@ SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
 # DATE:     2019-06-03
-# VERSION:  69
+# VERSION:  70
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes a bare-bones install of Ubuntu 18.04 LTS and sets up Open Corpus
@@ -22,6 +22,13 @@ SCRIPTNAME="cqpweb-instabox.sh"
 
 # CHANGE LOG:
 
+# v70
+# - All:             Made this script compatible with Debian (tested on Debian 9.9.0 stable). This
+#                      involved more changes than can reasonably be documented here.
+# - CQPweb:          Modified all code which had a specific PHP version hard-coded. It will now
+#                      detect the current PHP version and do what must be done regardless of the version.
+#
+#
 # v69
 # - CQPweb:          Refactored code so that favicon and TL/TR image can be uploaded independently.
 #
@@ -126,17 +133,18 @@ ADMINUSER="YOUR_INFO_HERE"  # CQPweb administrator usernames. Separate multiple 
   CQPWEBNUKEOLD=0           # Delete previously downloaded CQPweb files before downloading and installing again? Not normally needed!
 
 # CQPWEB OPTIONS AND CUSTOMIZATIONS
-IMAGEUPLD=1                 # Upload specified image to use as top left/right graphic in CQPweb. Set location and URL below.
+IMAGEUPLD=0                 # Upload specified image to use as top left/right graphic in CQPweb. Set location and URL below.
   IMAGESOURCE="YOUR_INFO_HERE" # URL of top left/right logo image source file.
   IMAGETARGET="YOUR_INFO_HERE" # Destination path of top left/right logo image file.
-FAVICONUPLD=1               # Upload favicon.ico to root of website?
-  FAVICONURL="YOUR_INFO_HERE" # Source URL of favicon.ico.
-CREATECQPWEBSCRIPTS=0           # Create a series of useful scripts in ~/bin.
-     CUSTOMIZEPAGES=0           # Customize certain CQPweb web pages. Users will definitely want to customize this.
-     CUSTOMIZEFONTS=0           # Modify CSS files in order to use a user-specified Google web font.
-     WEBFONTNAME="YOUR_INFO_HERE" # Name of web font. Check out https://fonts.google.com/ for more. Firefox doesn't seem to use
-                                # web fonts loaded this way (via @import).
-                                # CONFIRMED WORKING: Arimo, Fira Sans, Lato, Raleway, Raleway, Noto Sans, Roboto, Roboto Condensed, Open Sans, Source Code Pro (Typewriter), PT Sans
+FAVICONUPLD=0               # Upload favicon.ico to root of website?
+  FAVICONSOURCE="http://www.sadowsky.cl/files/cqpweb/favicon.ico" # Source URL of favicon.ico.
+  FAVICONTARGET="/var/www/html/cqpweb/" # Destination directory of favicon.ico.
+CREATECQPWEBSCRIPTS=0		# Create a series of useful scripts in ~/bin.
+CUSTOMIZEPAGES=0            # Customize certain CQPweb web pages. Users will definitely want to customize this.
+CUSTOMIZEFONTS=0            # Modify CSS files in order to use a user-specified Google web font.
+  WEBFONTNAME="YOUR_INFO_HERE" # Name of web font. Check out https://fonts.google.com/ for more. Firefox doesn't seem to use
+                            # web fonts loaded this way (via @import).
+                            # CONFIRMED WORKING: Arimo, Fira Sans, Lato, Raleway, Raleway, Noto Sans, Roboto, Roboto Condensed, Open Sans, Source Code Pro (Typewriter), PT Sans
 # CORPORA
 CORPDICKENS=0       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
 
@@ -150,7 +158,7 @@ WHITELISTEDIPS="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16" # IP addres
 
 # ADDITIONAL LINGUISTIC SOFTWARE: HEADLESS SERVER OR GUI
      FREELINGSW=0           # Install FreeLing tagger.
-       FREELINGESCLMODS=1   # Modify FreeLing's Chilean Spanish install.
+       FREELINGESCLMODS=0   # Modify FreeLing's Chilean Spanish install.
        FREELINGNUKEOLD=0    # Delete all downloaded FreeLing files before installing again.
 PRAATHEADLESSSW=0           # Install headless Praat phonetic analysis software.
      VISIDATASW=0           # Install Visidata, an amazing TUI tool to manipulate and process CSV files.
@@ -216,7 +224,9 @@ TIME="$(date +'%H:%M:%S')"                              # Time in HH:MM:SS forma
 USER="$(whoami)"                                        # Username of person installing software on local system.
 USERGROUPS="$(groups ${USER})"                          # The groups that the user belongs to.
 LOCALHOSTNAME="$(hostname)"                             # Local system's host name.
-OS="$(cat /etc/lsb-release | grep DISTRIB_ID | sed -r 's/DISTRIB_ID=//')" # Distro name
+#OS="$(cat /etc/lsb-release | grep DISTRIB_ID | sed -r 's/DISTRIB_ID=//')" # Distro name
+OS="$(lsb_release -i -s)" # Distro name
+RELEASE="$(lsb_release -r -s)"
 ETHERNET="$(ip link show | grep '[0-9]: e[a-z0-9]*:' | sed -r 's/^.+ (e[a-z0-9]+):.+$/\1/')" # Ethernet adapter. This is NOT infallible!
 #ETHERNET=$(ifconfig | grep '^e' | sed -r 's/:.+$//')   # Ethernet adapter (older method). This is NOT infallible!
 EXTERNALIP="$(wget -qO - http://checkip.amazonaws.com)" # Server's external IP.
@@ -604,7 +614,12 @@ if [[ "$UPGRADEOS" = 1 ]]; then
     sudo apt upgrade -y
 
     # INSTALL SOFTWARE THAT IS REQUIRED FOR EARLY OPERATIONS.
-    sudo apt install -y --install-recommends gnupg software-properties-common
+    sudo apt install -y --install-recommends gnupg software-properties-common apt-transport-https dirmngr rng-tools
+
+    # FIX RNGTOOLS MISCONFIGURATION
+    if [[ "$OS" = "Debian" ]]; then
+        echo "HRNGDEVICE=/dev/urandom" | sudo tee -a /etc/default/rng-tools
+    fi
 
     # CLEAN UP
     sudo apt -y autoremove
@@ -976,7 +991,12 @@ if [[ "$SSHGENNEWKEYS" = 1 ]]; then
 
     # UPDATE SOFTWARE
     sudo apt update -y
-    sudo apt install -y --install-recommends figlet openssh-sftp-server ssh-askpass ssh-audit sshfs landscape-common lolcat toilet toilet-fonts
+    sudo apt install -y --install-recommends figlet openssh-sftp-server ssh-askpass sshfs lolcat toilet toilet-fonts
+
+    # INSTALL ON EVERYTHING BUT DEBIAN. THERE SEEM TO BE NO DEBIAN EQUIVALENTS AVAILABLE IN 9.9.0 REPOS
+    if ! [[ "$OS" = "Debian" ]]; then
+        sudo apt install -y --install-recommends ssh-audit landscape-common
+    fi
 
     # ELIMINATE EXISTING KEYS AND GENERATE STRONG NEW ONES
     echo "${CWHT}${BLD}            Generating strong new keys. This will take a minute!...${RST}"
@@ -1051,7 +1071,12 @@ if [[ "$SSHPWDSW" = 1 ]]; then
         # UPDATE AND INSTALL SOFTWARE
         sudo apt update -y
         sudo apt upgrade -y
-        sudo apt install -y --install-recommends figlet openssh-sftp-server ssh-askpass ssh-audit sshfs landscape-common lolcat toilet toilet-fonts
+        sudo apt install -y --install-recommends figlet openssh-sftp-server ssh-askpass sshfs lolcat toilet toilet-fonts
+
+        # INSTALL ON EVERYTHING BUT DEBIAN. THERE SEEMS TO BE NO DEBIAN PACKAGE AVAILABLE FOR THIS.
+        if ! [[ "$OS" = "Debian" ]]; then
+            sudo apt install -y --install-recommends ssh-audit landscape-common
+        fi
 
         # RESTORE BACKUP SSH_CONFIG IF IT EXISTS, ELSE MAKE BACKUP
         if [[ -f /etc/ssh/ssh_config.BAK ]]; then
@@ -1122,6 +1147,14 @@ if [[ "$SSHPWDSW" = 1 ]]; then
             sudo cp /etc/profile /etc/profile.BAK
         fi
 
+        # ADD LANDSCAPE-SYSINFO COMMAND TO EVERYTHING BUT DEBIAN
+        if [[ "$OS" = "Debian" ]]; then
+            LANDSCAPE=""
+        else
+            LANDSCAPE="landscape-sysinfo"
+        fi
+
+
         # ADD MESSAGE TO /ETC/PROFILE
         sudo tee -a /etc/profile <<- EOF >/dev/null 2>&1
 		# LOGIN MESSAGE added by ${SCRIPTNAME} on ${DATE}
@@ -1132,7 +1165,7 @@ if [[ "$SSHPWDSW" = 1 ]]; then
 		echo ""
 		MYIP=\$(wget -qO - http://wtfismyip.com/text)
 		toilet -f ivrit -t -F border:crop \$MYHOST | lolcat -p 1
-		landscape-sysinfo
+		$LANDSCAPE
 		echo ""
 		echo -e "You are \${BOLDWHITE}\${MYUSER}@\${MYHOST}\${NC} on \${BOLDWHITE}\${MYIP}\${NC}."
 		echo ""
@@ -1247,24 +1280,36 @@ if [[ "$NECESSARYSW" = 1 ]]; then
     echo "${CLBL}${BLD}==========> Installing NECESSARY SOFTWARE...${RST}"
 
     ####################
-    # ADD MOST UP-TO-DATE R REPOSITORY IF IT'S NOT ALREADY INSTALLED
+    # ADD MOST UP-TO-DATE R REPOSITORY IF IT'S NOT ALREADY INSTALLED.
+    # NOT INSTALLED ON DEBIAN 9.9.0 AS R DEPENDS ON PACKAGES THAT ARE FAR MORE RECENT THAT DEBIAN'S.
     ####################
 
-    # ADD CRAN35 KEY
-    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9
+    # ADD UP-TO-DATE R REPOSITORY ON EVERYTHING BUT DEBIAN
+    if ! [[ "$OS" = "Debian" ]]; then
+        # ADD CRAN35 KEY
+        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9
 
-    # ADD CRAN35 REPOSITORY
-    if ! grep -q "^deb .*cran35" /etc/apt/sources.list /etc/apt/sources.list.d/* 2> /dev/null; then
-        sudo apt-add-repository 'deb https://cloud.r-project.org/bin/linux/ubuntu/ bionic-cran35/'
-    else
-        echo "${CWHT}${BLD}            The cran35 respository is already installed.${RST}"
-        echo ""
+        # ADD CRAN35 REPOSITORY
+        if ! grep -q "^deb .*cran35" /etc/apt/sources.list /etc/apt/sources.list.d/* 2> /dev/null; then
+            sudo apt-add-repository 'deb https://cloud.r-project.org/bin/linux/ubuntu/ bionic-cran35/'
+        else
+            echo "${CWHT}${BLD}            The cran35 respository is already installed.${RST}"
+            echo ""
+        fi
     fi
 
     # UPDATE AND INSTALL SOFTWARE
     sudo apt update -y
     sudo apt upgrade -y
-    sudo apt install -y --install-recommends aria2 autoconf automake build-essential curl dos2unix gcc git linux-headers-generic locales-all make members mercurial openssh-server openssl pkg-config recode subversion unicode wget
+    sudo apt install -y --install-recommends aria2 autoconf automake build-essential curl dos2unix gcc git locales-all make members mercurial openssh-server openssl pkg-config recode subversion unicode wget
+
+    # INSTALL ON DEBIAN ONLY
+    if [[ "$OS" = "Debian" ]]; then
+        sudo apt install -y --install-recommends linux-headers-$(uname -r)
+    else
+        # INSTALL ON EVERYTHING BUT DEBIAN
+        sudo apt install -y --install-recommends linux-headers-generic
+    fi
 
     echo "${CGRN}${BLD}==========> NECESSARY SOFTWARE installation finished.${RST}"
     echo ""
@@ -1283,7 +1328,15 @@ if [[ "$USEFULSW" = 1 ]]; then
 
     sudo apt update -y
     sudo apt upgrade -y
-    sudo apt install -y --install-recommends bzip2 exfat-fuse exfat-utils lbzip2 mc moreutils most neofetch p7zip p7zip-full p7zip-rar pbzip2 python3-pip rename unrar unzip w3m zip
+    sudo apt install -y --install-recommends bzip2 exfat-fuse exfat-utils lbzip2 mc moreutils most neofetch p7zip p7zip-full pbzip2 python3-pip rename unzip w3m zip
+
+    # INSTALL ON DEBIAN ONLY
+    if [[ "$OS" = "Debian" ]]; then
+        sudo apt install -y --install-recommends unrar-free
+    else
+        # INSTALL ON EVERYTHING BUT DEBIAN
+        sudo apt install -y --install-recommends p7zip-rar unrar
+    fi
 
     echo "${CGRN}${BLD}==========> USEFUL SOFTWARE installation finished).${RST}"
     echo ""
@@ -1304,42 +1357,75 @@ if [[ "$SERVERSW" = 1 ]]; then
     read -r -p "${CORG}${BLD}            Press any key to continue (or wait 10 seconds)... ${RST}" -n 1 -t 10 -s
     echo ""
 
+    ####################
     # INSTALL MAIN DISTRO SOFTWARE
+    ####################
     sudo apt update -y
     sudo apt upgrade -y
-    sudo apt install -y --install-recommends acct apachetop apt-listchanges apticron byobu ccze cpulimit discus fancontrol figlet hddtemp htop hwinfo iftop iotop iptraf iptstate iselect lm-sensors lolcat mytop net-tools nethogs nload nmap nmon powertop rng-tools screen screenie smartmontools speedometer speedtest-cli tmux traceroute unattended-upgrades vnstat w3m whowatch
+    sudo apt install -y --install-recommends acct apachetop apt-listchanges apticron byobu ccze cpulimit discus fancontrol figlet hddtemp htop hwinfo iftop iotop iptraf iptstate iselect lm-sensors locate lolcat net-tools nethogs nload nmap nmon powertop rng-tools screen screenie smartmontools speedometer speedtest-cli tmux traceroute unattended-upgrades vnstat w3m whowatch
+    # INSTALL ON EVERYTHING BUT DEBIAN
+    if ! [[ "$OS" = "Debian" ]]; then
+        sudo apt install -y --install-recommends mytop
+    fi
 
+    ####################
     # INSTALL MONITORING SOFTWARE
+    ####################
     sudo -H pip3 install --system glances
     sudo -H pip3 install --system s-tui
 
+    ####################
     # INSTALL RIPGREP (https://github.com/BurntSushi/ripgrep/)
-    sudo mkdir -p /tmp/rg               # MAKE TEMP DIR
-    sudo chmod -R ugo+rwx /tmp/rg       # CHANGE PERMISSIONS OF TEMP DIR
-    cd /tmp/rg || exit                  # MOVE INTO TEMP DIR
-    # DOWNLOAD THE GITHUB "LATEST" PAGE, WHICH REDIRECTS TO A PAGE WITH THE LATEST VERSION NUMBER IN ITS URL, AND EXTRACT THAT LINE
-    RGLATESTVER=$(aria2c https://github.com/BurntSushi/ripgrep/releases/latest | grep 'Redirecting to')
-    RGLATESTVER="$(sed -r 's/^.+\/tag\///' <<< $RGLATESTVER)"   # STRIP EVERYTHING BUT VERSION NUMBER FROM EXTRACTED LINE
-    # ASSEMBLE THE DEB FILE NAME
-    RGPATH="https://github.com/BurntSushi/ripgrep/releases/download/${RGLATESTVER}"
-    RGFILENAME="ripgrep_${RGLATESTVER}_amd64.deb"
-    curl -LO "${RGPATH}/${RGFILENAME}"  # DOWNLOAD THE DEB FILE
-    sudo dpkg -i "${RGFILENAME}"        # INSTALL THE DEB FILE
-    sudo rm -rf /tmp/rg                 # DELETE THE TMP DIRECTORY AND ITS CONTENTS
+    ####################
+    if [[ "$OS" = "Debian" ]]; then
+        # ON DEBIAN
+        curl -LO https://github.com/BurntSushi/ripgrep/releases/download/11.0.1/ripgrep_11.0.1_amd64.deb
+        sudo dpkg -i ripgrep_11.0.1_amd64.deb
+    else
+        # ON EVERYTHING BUT DEBIAN
+        sudo mkdir -p /tmp/rg               # MAKE TEMP DIR
+        sudo chmod -R ugo+rwx /tmp/rg       # CHANGE PERMISSIONS OF TEMP DIR
+        cd /tmp/rg || exit                  # MOVE INTO TEMP DIR
+        # DOWNLOAD THE GITHUB "LATEST" PAGE, WHICH REDIRECTS TO A PAGE WITH THE LATEST VERSION NUMBER IN ITS URL, AND EXTRACT THAT LINE
+        RGLATESTVER=$(aria2c https://github.com/BurntSushi/ripgrep/releases/latest | grep 'Redirecting to')
+        RGLATESTVER="$(sed -r 's/^.+\/tag\///' <<< $RGLATESTVER)"   # STRIP EVERYTHING BUT VERSION NUMBER FROM EXTRACTED LINE
+        # ASSEMBLE THE DEB FILE NAME
+        RGPATH="https://github.com/BurntSushi/ripgrep/releases/download/${RGLATESTVER}"
+        RGFILENAME="ripgrep_${RGLATESTVER}_amd64.deb"
+        curl -LO "${RGPATH}/${RGFILENAME}"  # DOWNLOAD THE DEB FILE
+        sudo dpkg -i "${RGFILENAME}"        # INSTALL THE DEB FILE
+        sudo rm -rf /tmp/rg                 # DELETE THE TMP DIRECTORY AND ITS CONTENTS
+    fi
 
+    ####################
     # INSTALL FD
+    ####################
     sudo mkdir -p /tmp/fd               # MAKE TEMP DIR
     sudo chmod -R ugo+rwx /tmp/fd       # CHANGE PERMISSIONS OF TEMP DIR
     cd /tmp/fd || exit                  # MOVE INTO TEMP DIR
-    # DOWNLOAD THE GITHUB "LATEST" PAGE, WHICH REDIRECTS TO A PAGE WITH THE LATEST VERSION NUMBER IN ITS URL, AND EXTRACT THAT LINE
-    FDLATESTVER=$(aria2c https://github.com/sharkdp/fd/releases/latest | grep 'Redirecting to')
-    FDLATESTVER="$(sed -r 's/^.+\/tag\/v//' <<< $FDLATESTVER)"   # STRIP EVERYTHING BUT VERSION NUMBER FROM EXTRACTED LINE
-    # ASSEMBLE THE DEB FILE NAME
-    FDPATH="https://github.com/sharkdp/fd/releases/download/v${FDLATESTVER}"
-    FDFILENAME="fd_${FDLATESTVER}_amd64.deb"
-    curl -LO "${FDPATH}/${FDFILENAME}"  # DOWNLOAD THE DEB FILE
-    sudo dpkg -i "${FDFILENAME}"        # INSTALL THE DEB FILE
-    sudo rm -rf /tmp/fd                 # DELETE THE TMP DIRECTORY AND ITS CONTENTS
+
+    # ASSEMBLE FILENAME
+    if [[ "$OS" = "Debian" ]]; then
+        # DOWNLOAD THE GITHUB "LATEST" PAGE, WHICH REDIRECTS TO A PAGE WITH THE LATEST VERSION NUMBER IN ITS URL, AND EXTRACT THAT LINE
+        FDLATESTVER=$(aria2c https://github.com/sharkdp/fd/releases/latest | grep 'Download complete')
+        FDLATESTVER="$(perl -p0e 's/^.+\/fd\/v([0-9.]+).*$/$1/gsm' <<< $FDLATESTVER)"   # STRIP EVERYTHING EXCEPT VERSION NUMBER
+        # ASSEMBLE THE DEB FILE NAME
+        FDPATH="https://github.com/sharkdp/fd/releases/download/v${FDLATESTVER}"
+        # ASSEMBLE FILENAME FOR DEBIAN
+        FDFILENAME="fd-musl_${FDLATESTVER}_amd64.deb"
+    else
+        # DOWNLOAD THE GITHUB "LATEST" PAGE, WHICH REDIRECTS TO A PAGE WITH THE LATEST VERSION NUMBER IN ITS URL, AND EXTRACT THAT LINE
+        FDLATESTVER=$(aria2c https://github.com/sharkdp/fd/releases/latest | grep 'Redirecting to')
+        FDLATESTVER="$(sed -r 's/^.+\/tag\/v//' <<< $FDLATESTVER)"   # STRIP EVERYTHING BUT VERSION NUMBER FROM EXTRACTED LINE
+        # ASSEMBLE THE DEB FILE NAME
+        FDPATH="https://github.com/sharkdp/fd/releases/download/v${FDLATESTVER}"
+        # ASSEMBLE FILENAME FOR EVERYTHING BUT DEBIAN
+        FDFILENAME="fd_${FDLATESTVER}_amd64.deb"
+    fi
+
+    curl -LO "${FDPATH}/${FDFILENAME}"      # DOWNLOAD THE DEB FILE
+    sudo dpkg -i "${FDFILENAME}"  # INSTALL THE DEB FILE
+    sudo rm -rf /tmp/fd                     # DELETE THE TMP DIRECTORY AND ITS CONTENTS
 
     echo "${CGRN}${BLD}==========> SERVER SOFTWARE installation finished.${RST}"
     echo ""
@@ -1628,7 +1714,12 @@ if [[ "$CQPWEBSW" = 1 ]]; then
     ####################
     sudo apt update -y
     sudo apt upgrade -y
-    sudo apt install -y --install-recommends apache2 byobu libapache2-mod-php libjpeg-dev libpng-dev libwebp-dev mysql-client mysql-common mysql-server mysql-utilities php-bz2 php-db php-gd php-json php-mbstring php-mysql php-soap php-xml php-zip r-base ttf-ubuntu-font-family
+    sudo apt install -y --install-recommends apache2 byobu libapache2-mod-php libjpeg-dev libpng-dev libwebp-dev mysql-client mysql-common mysql-server mysql-utilities php-bz2 php-db php-gd php-json php-mbstring php-mysql php-soap php-xml php-zip r-base r-base-core r-recommended
+
+    # INSTALL ON EVERYTHING BUT DEBIAN
+    if ! [[ "$OS" = "Debian" ]]; then
+        sudo apt install -y --install-recommends ttf-ubuntu-font-family
+    fi
 
     ####################
     # USER AND GROUP MANAGEMENT &
@@ -1690,41 +1781,50 @@ if [[ "$CQPWEBSW" = 1 ]]; then
     # PHP APACHE CONFIGURATION
     ####################
 
+    # GET PHP VERSION SO WE CAN FIGURE OUT THE RIGHT DIRECTORY TO WORK ON
+    PHPVER="$(php --version | grep '^PHP ' | sed -r 's/^PHP ([0-9]\.[0-9]).+$/\1/')"
+
+    # MOVE INTO APPROPRIATE DIRECTORY
+    cd "/etc/php/${PHPVER}/apache2" || exit
+
     # IF APACHE PHP.INI BACKUP EXISTS, RESTORE IT BEFORE PROCEEDING. OTHERWISE, MAKE BACKUP.
-    if [[ -f /etc/php/7.2/apache2/php.ini.BAK ]]; then
+    if [[ -f php.ini.BAK ]]; then
         # RESTORE BACKUP
-        sudo rm /etc/php/7.2/apache2/php.ini
-        sudo cp /etc/php/7.2/apache2/php.ini.BAK /etc/php/7.2/apache2/php.ini
+        sudo rm php.ini
+        sudo cp php.ini.BAK php.ini
     else
         # MAKE BACKUP
-        sudo cp /etc/php/7.2/apache2/php.ini /etc/php/7.2/apache2/php.ini.BAK
+        sudo cp php.ini php.ini.BAK
     fi
 
     # PHP: MODIFY CONFIG FILE
-    configLine "^[; \t]*memory_limit[ =].*"                  "memory_limit = 512M"             /etc/php/7.2/apache2/php.ini
-    configLine "^[; \t]*max_execution_time[ =].*"            "max_execution_time = 600"        /etc/php/7.2/apache2/php.ini
-    configLine "^[; \t]*upload_max_filesize[ =].*"           "upload_max_filesize = 128M"      /etc/php/7.2/apache2/php.ini
-    configLine "^[; \t]*post_max_size[ =].*"                 "post_max_size = 128M"            /etc/php/7.2/apache2/php.ini
-    configLine "^[; \t]*mysqli.allow_local_infile[ =].*"     "mysqli.allow_local_infile = On"  /etc/php/7.2/apache2/php.ini
-    configLine "^[; \t]*extension=mysqli.*$"                 "extension=mysqli"                /etc/php/7.2/apache2/php.ini
-    configLine "^[; \t]*extension=gd2.*$"                    "extension=gd2"                   /etc/php/7.2/apache2/php.ini
+    configLine "^[; \t]*memory_limit[ =].*"                  "memory_limit = 512M"             php.ini
+    configLine "^[; \t]*max_execution_time[ =].*"            "max_execution_time = 600"        php.ini
+    configLine "^[; \t]*upload_max_filesize[ =].*"           "upload_max_filesize = 128M"      php.ini
+    configLine "^[; \t]*post_max_size[ =].*"                 "post_max_size = 128M"            php.ini
+    configLine "^[; \t]*mysqli.allow_local_infile[ =].*"     "mysqli.allow_local_infile = On"  php.ini
+    configLine "^[; \t]*extension=mysqli.*$"                 "extension=mysqli"                php.ini
+    configLine "^[; \t]*extension=gd2.*$"                    "extension=gd2"                   php.ini
 
     ####################
     # PHP CLI CONFIGURATION
     ####################
 
+    # MOVE INTO APPROPRIATE DIRECTORY
+    cd "/etc/php/${PHPVER}/cli" || exit
+
     # IF CLI PHP.INI BACKUP EXISTS, RESTORE IT BEFORE PROCEEDING. OTHERWISE, MAKE BACKUP.
-    if [[ -f /etc/php/7.2/cli/php.ini.BAK ]]; then
+    if [[ -f php.ini.BAK ]]; then
         # RESTORE BACKUP
-        sudo rm /etc/php/7.2/cli/php.ini
-        sudo cp /etc/php/7.2/cli/php.ini.BAK /etc/php/7.2/cli/php.ini
+        sudo rm php.ini
+        sudo cp php.ini.BAK php.ini
     else
         # MAKE BACKUP
-        sudo cp /etc/php/7.2/cli/php.ini /etc/php/7.2/cli/php.ini.BAK
+        sudo cp php.ini php.ini.BAK
     fi
 
     # PHP CLI: MODIFY CONFIG FILE
-    configLine "^[; \t]*mysqli.allow_local_infile[ =].*"     "mysqli.allow_local_infile = On"  /etc/php/7.2/cli/php.ini
+    configLine "^[; \t]*mysqli.allow_local_infile[ =].*"     "mysqli.allow_local_infile = On"  php.ini
 
     ####################
     # APACHE
@@ -2485,11 +2585,11 @@ fi
 if [[ "${FAVICONUPLD}" = 1 ]]; then
 
     # UPLOAD IMAGE FILE(S) TO SERVER IF AN ACTUAL URL HAS BEEN SET
-    if ! [[ "${IMAGETARGET}" = "YOUR_INFO_HERE" && "${FAVICONURL}" = "YOUR_INFO_HERE" ]]; then
+    if ! [[ "${FAVICONTARGET}" = "YOUR_INFO_HERE" && "${FAVICONSOURCE}" = "YOUR_INFO_HERE" ]]; then
         echo ""
         echo "${CLBL}${BLD}==========> Uploading FAVICON...${RST}"
 
-        sudo wget -P "${IMAGETARGET}" "${FAVICONURL}"
+        sudo wget -P "${FAVICONTARGET}" "${FAVICONSOURCE}"
 
         echo "${CGRN}${BLD}==========> FAVICON upload finished.${RST}"
         echo ""
@@ -2646,7 +2746,7 @@ if [[ "$MAILSW" = 1 ]]; then
     read -r -p "${CORG}${BLD}            Press any key to continue (or wait 10 seconds)... ${RST}" -n 1 -t 10 -s
     echo ""
 
-    sudo apt install -y --install-recommends mailutils mailutils-mh libsasl2-2 libsasl2-modules ca-certificates secure-delete
+    sudo apt install -y --install-recommends mailutils mailutils-mh libsasl2-2 libsasl2-modules ca-certificates postfix secure-delete
 
     # IF BACKUP OF CONFIG FILE EXISTS, RESTORE IT BEFORE PROCEEDING. OTHERWISE, MAKE BACKUP
     if [[ -f "/etc/postfix/main.cf.BAK" ]]; then
@@ -3003,7 +3103,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 
         # Install the software
         sudo apt update -y
-        sudo apt install -y --install-recommends fail2ban iptables-persistent denyhosts logcheck
+        sudo apt install -y --install-recommends fail2ban iptables-persistent logcheck
 
         # Delete any pre-existing local config file and create a new one
         sudo rm -f /etc/fail2ban/jail.local
@@ -3059,7 +3159,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		enabled = true
 		port = http,https
 		filter = apache-badbots
-		bantime = 48h
+		bantime = 84000
 		maxretry = 1
 		logpath = /var/log/apache2/*error.log
 		#logpath = %(apache_access_log)s
@@ -3486,6 +3586,20 @@ if [[ "$NLPSW" = 1 ]]; then
     # INSTALL DISTRO SOFTWARE
     sudo apt install -y --install-recommends csvkit csvkit-doc dos2unix ipython3 jupyter libopenblas-dev libxml2-dev libxml2-utils locales-all python-numpy-doc python-pandas-doc python-scipy-doc python-scrapy-doc python-sklearn-doc python-tweepy-doc python3-nltk python3-numpy python3-pandas python3-pip python3-regex python3-scipy python3-scrapy python3-sklearn python3-tweepy r-base-dev recode virtualenv
 
+    # INSTALL SOFTWARE FOR OLD DEBIAN VERSIONS
+    if [[ "$(which csvkit)" = "" ]]; then
+        sudo apt install -y --install-recommends python-csvkit
+    fi
+
+    if [[ "$(which jupyter)" = "" ]]; then
+        sudo apt install -y --install-recommends python3-jupyter-core
+    fi
+
+    if [[ "$(which python-scrapy)" = "" ]]; then
+        sudo apt install -y --install-recommends python-scrapy
+    fi
+
+
     # INSTALL PYTHON SOFTWARE
     sudo -H pip3 install --system cwb-python
     sudo -H pip3 install --system http://www.collocations.de/temp/PyCQP_interface-1.0.1.tar.gz
@@ -3598,3 +3712,4 @@ fi
 cwb_max_ram_usage_cli         = 1024
   IMAGEUPLD=0               # Upload specified image to use as top left/right graphic in CQPweb. Set location and URL below.
    FAVICONUPLD=0             # Upload favicon.ico to root of website?
+  FAVICONURL="YOUR_INFO_HERE" # Source URL of favicon.ico.
