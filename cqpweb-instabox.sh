@@ -3,8 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-06-03
-# VERSION:  70
+# DATE:     2019-06-07
+# VERSION:  71
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes a bare-bones install of Ubuntu 18.04 LTS and sets up Open Corpus
@@ -17,59 +17,65 @@ SCRIPTNAME="cqpweb-instabox.sh"
 #              18.04 Desktop, and Lubuntu 18.04 Desktop in virtual machines, and on Ubuntu Live Server
 #              and Alternative Server on bare metal.
 #
-#              While I've made every effort to make it work properly, it comes with no guarantees and
-#              no warranties. Bug reports are most welcome!
+#              While I've made every effort to make it work properly, it comes with no guarantees and no
+#              warranties. You can always try it out in a VM first, of course! Bug reports are most welcome!
 
 # CHANGE LOG:
 
+# v71
+# - CQPweb:      The fonts used in concordances are now customizable. A monospace font looks very nice there!
+# - All:         Added a script to report versions of CQPweb, CWB, etc. (~/bin/version-report.sh).
+# - CQPweb:      User can now choose to install MySQL 8 rather than the default version. WARNING: CQPweb does
+#                  NOT currently work with MySQL 8.
+#
 # v70
-# - All:             Made this script compatible with Debian (tested on Debian 9.9.0 stable). This
-#                      involved more changes than can reasonably be documented here.
-# - CQPweb:          Modified all code which had a specific PHP version hard-coded. It will now
-#                      detect the current PHP version and do what must be done regardless of the version.
+# - All:         Made this script compatible with Debian (tested on Debian 9.9.0 stable). This
+#                  involved more changes than can reasonably be documented here.
+# - CQPweb:      Modified all code which had a specific PHP version hard-coded. It will now
+#                  detect the current PHP version and do what must be done regardless of the version.
 #
 #
 # v69
-# - CQPweb:          Refactored code so that favicon and TL/TR image can be uploaded independently.
+# - CQPweb:      Refactored code so that favicon and TL/TR image can be uploaded independently.
 #
 # v68
-# - CQPweb:          Added ability to customize the font used by modifying all CSS files.
-# - CQPweb:          Modified upd-all.sh script so it now automatically updates the CQPweb database.
-# - CQPweb:          Refactored code that creates scripts in ~/bin so it can be run independently of
-#                    the rest of cqpweb-instabox.sh.
+# - CQPweb:      Added ability to customize the font used by modifying all CSS files.
+# - CQPweb:      Modified upd-all.sh script so it now automatically updates the CQPweb database.
+# - CQPweb:      Refactored code that creates scripts in ~/bin so it can be run independently of
+#                the rest of cqpweb-instabox.sh.
 #
 # v67
-# - CQPweb:          Added creation of script to upgrade databases.
+# - CQPweb:      Added creation of script to upgrade databases.
 #
 # v66
-# - SSH PubKey:      SSH Public Key installation routine now installs certain software that would
-#                    otherwise only be installed if user chooses the "server" installation options.
+# - SSH PubKey:  SSH Public Key installation routine now installs certain software that would
+#                otherwise only be installed if user chooses the "server" installation options.
 #
 # v65
-# - CQPweb:          Fixed another bug in the offline frequency counting script.
+# - CQPweb:      Fixed another bug in the offline frequency counting script.
 #
 # v64
-# - CQPweb:          Fixed bug in creation of offline frequency counting script (in ~/bin).
+# - CQPweb:      Fixed bug in creation of offline frequency counting script (in ~/bin).
 #
 # v63
-# - All:             Added metaconfigurations and ability to select them from CLI.
-# - CWB+CQPweb       Added script to facilitate off-line calculation of frequencies (in ~/bin).
-# - CQPweb:          Bugfix: Lack of 'sudo' prevented /var/www/html/cqpweb from being created in certain conditions.
-# - CWB+CQPweb:      Added text telling user what revision is being installed.
-# - CQPweb:          Added variable to select whether or not to upload top left/right logo, along with variables for
-#                      image source and destination.
+# - All:         Added metaconfigurations and ability to select them from CLI.
+# - CWB+CQPweb   Added script to facilitate off-line calculation of frequencies (in ~/bin).
+# - CQPweb:      Bugfix: Lack of 'sudo' prevented /var/www/html/cqpweb from being created in certain conditions.
+# - CWB+CQPweb:  Added text telling user what revision is being installed.
+# - CQPweb:      Added variable to select whether or not to upload top left/right logo, along with variables for
+#                  image source and destination.
 #
 # v62
-# - CQPweb:          Adjusted syntax of empty strings in config.inc.php.
-# - CQPweb:          Added creation of script for sending test e-mails via Postfix (in ~/bin).
-# - CQPweb:          Added option to modify certain web pages (set CUSTOMIZEPAGES=1).
-# - CQPweb:          Added message to user telling them what IP address to open in browser to use CQPweb.
+# - CQPweb:      Adjusted syntax of empty strings in config.inc.php.
+# - CQPweb:      Added creation of script for sending test e-mails via Postfix (in ~/bin).
+# - CQPweb:      Added option to modify certain web pages (set CUSTOMIZEPAGES=1).
+# - CQPweb:      Added message to user telling them what IP address to open in browser to use CQPweb.
 #
 # v61
-# - CQPweb:          Added install of php-json module.
-#                    Added code to upload favicon.ico to server.
-# - Server Software: Added install of 'ripgrep' and 'fd'.
-# - Bash config:     Added aliases for viewing various logs.
+# - CQPweb:      Added install of php-json module.
+#                Added code to upload favicon.ico to server.
+# - Server SW:   Added install of 'ripgrep' and 'fd'.
+# - Bash config: Added aliases for viewing various logs.
 #
 # v60
 # - Initial release.
@@ -122,29 +128,42 @@ CWB=0                    # Install CORPUS WORKBENCH (CWB)
   CWBPLATFORM="linux-64" # Platform to compile CWPweb for. OPTIONS: cygwin, darwin, darwin-64, darwin-brew, darwin-port-core2,
                          #   darwin-universal, linux, linux-64, linux-opteron, mingw-cross, mingw-native, solaris, unix
   CWBSITE="standard"     # Location for binary installation. 'standard'=/usr/local tree; 'beta-install'=/usr/local/cwb-<VERSION>.
-  CWBNUKEOLD=0           # Delete previously downloaded CWB files before downloading and installing again? Not normally needed!
+  CWBNUKEOLD=1           # Delete previously downloaded CWB files before downloading and installing again? Not normally needed!
 
 # CQPWEB
 CQPWEBSW=0                  # Install CQPWEB SERVER.
 ADMINUSER="YOUR_INFO_HERE"  # CQPweb administrator usernames. Separate multiple entries with | .
+  MYSQL8=0                  # Install MySQL v. 8
+  MYSQLDLURL="https://dev.mysql.com/get/mysql-apt-config_0.8.13-1_all.deb" # URL for downloading the mysql .deb package. You may
+                            # want to manually update this as new versions come out.
   DBUSER="cqpweb"           # Username for MYSQL database and webuser
   DBPWD="cqpweb"            # Password for MYSQL database and webuser
   CQPMAKENEWDB=1            # Delete existing database and make a new one? (NECESSARY for new installs; normally undesirable otherwise).
   CQPWEBNUKEOLD=0           # Delete previously downloaded CQPweb files before downloading and installing again? Not normally needed!
 
-# CQPWEB OPTIONS AND CUSTOMIZATIONS
-IMAGEUPLD=0                 # Upload specified image to use as top left/right graphic in CQPweb. Set location and URL below.
+# CQPWEB OPTIONS AND CUSTOMIZATIONS.
+# THESE CAN BE RUN INDEPENDENTLY OF THE INSTALLATION OF CQPWEB ITSELF!
+IMAGEUPLD=0                  # Upload specified image to use as top left/right graphic in CQPweb. Set location and URL below.
   IMAGESOURCE="YOUR_INFO_HERE" # URL of top left/right logo image source file.
-  IMAGETARGET="YOUR_INFO_HERE" # Destination path of top left/right logo image file.
-FAVICONUPLD=0               # Upload favicon.ico to root of website?
-  FAVICONSOURCE="http://www.sadowsky.cl/files/cqpweb/favicon.ico" # Source URL of favicon.ico.
+  IMAGETARGET="/var/www/html/cqpweb/css/img/"                             # Destination path of top left/right logo image file.
+FAVICONUPLD=0                # Upload favicon.ico to root of website?
+  FAVICONSOURCE="YOUR_INFO_HERE" # Source URL of favicon.ico.
   FAVICONTARGET="/var/www/html/cqpweb/" # Destination directory of favicon.ico.
-CREATECQPWEBSCRIPTS=0		# Create a series of useful scripts in ~/bin.
-CUSTOMIZEPAGES=0            # Customize certain CQPweb web pages. Users will definitely want to customize this.
-CUSTOMIZEFONTS=0            # Modify CSS files in order to use a user-specified Google web font.
-  WEBFONTNAME="YOUR_INFO_HERE" # Name of web font. Check out https://fonts.google.com/ for more. Firefox doesn't seem to use
-                            # web fonts loaded this way (via @import).
-                            # CONFIRMED WORKING: Arimo, Fira Sans, Lato, Raleway, Raleway, Noto Sans, Roboto, Roboto Condensed, Open Sans, Source Code Pro (Typewriter), PT Sans
+CREATECQPWEBSCRIPTS=0        # Create a series of useful scripts in ~/bin.
+CUSTOMIZEPAGES=0             # Customize certain CQPweb web pages. Users will definitely want to customize this.
+CUSTOMIZEFONTS=0             # Modify CSS files in order to use a user-specified Google web font for most of the interface and/or
+                             #   for concordances. To customize one but not the other, set the font to emtpy ("") or "YOUR_INFO_HERE".
+  MAINFONT="Open Sans"   # Name of Google web font for ALMOST EVERYTHING.
+  CONCFONT="IBM Plex Mono" # Name of Google web font for CONCORDANCE.
+                             # Check out https://fonts.google.com/ for more web fonts. NOTE: Not all fonts seem to work in all browsers.
+                             # CONFIRMED WORKING FONTS:
+                             # [SANS]: Arimo, Fira Sans, Lato, Noto Sans, Open Sans, PT Sans, Raleway, Roboto, Roboto Condensed
+                             # [MONO-SMALL]: Inconsolata, Ubuntu Mono
+                             # [MONO-MID]: Oxygen Mono, Space Mono, Overpass Mono, Fira Mono, IBM Plex Mono, Source Code Pro
+                             # [MONO-UGLY]: Anonymous Pro, B612 Mono, Cousine, PT Mono
+
+TURNDEBUGON=0                # Set CQPweb to print debug messages.
+
 # CORPORA
 CORPDICKENS=0       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
 
@@ -234,6 +253,7 @@ INTERNALIP="$(ip route get 1.2.3.4 | awk '{print $7}')" # Server's internal IP.
 INTERNALIP2="$(ip addr show ${ETHERNET} | grep 'inet ' | awk '{print $2}' | cut -f1 -d'/')" # Server's internal IP (Method 2).
 SWDIR="${HOME}/${SHORTSWDIR}"                           # Full software installation directory.
 USERARG="$1"
+
 # MAKE BASIC REQUIRED DIRECTORIES
 mkdir -p "${SWDIR}"
 
@@ -616,9 +636,14 @@ if [[ "$UPGRADEOS" = 1 ]]; then
     # INSTALL SOFTWARE THAT IS REQUIRED FOR EARLY OPERATIONS.
     sudo apt install -y --install-recommends gnupg software-properties-common apt-transport-https dirmngr rng-tools
 
-    # FIX RNGTOOLS MISCONFIGURATION
+    # FIX RNGTOOLS MISCONFIGURATION ON DEBIAN
     if [[ "$OS" = "Debian" ]]; then
         echo "HRNGDEVICE=/dev/urandom" | sudo tee -a /etc/default/rng-tools
+    fi
+
+    # PURGE ANY EXISTING MYSQL INSTALL IF MYSQL 8 IS TO BE INSTALLED.
+    if [[ "$MYSQL8" = 1 ]]; then
+        sudo apt purge -y mysql*
     fi
 
     # CLEAN UP
@@ -1289,7 +1314,7 @@ if [[ "$NECESSARYSW" = 1 ]]; then
         # ADD CRAN35 KEY
         sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9
 
-        # ADD CRAN35 REPOSITORY
+        # ADD CRAN35 REPOSITORY EXCEPT ON DEBIAN
         if ! grep -q "^deb .*cran35" /etc/apt/sources.list /etc/apt/sources.list.d/* 2> /dev/null; then
             sudo apt-add-repository 'deb https://cloud.r-project.org/bin/linux/ubuntu/ bionic-cran35/'
         else
@@ -1362,7 +1387,9 @@ if [[ "$SERVERSW" = 1 ]]; then
     ####################
     sudo apt update -y
     sudo apt upgrade -y
+
     sudo apt install -y --install-recommends acct apachetop apt-listchanges apticron byobu ccze cpulimit discus fancontrol figlet hddtemp htop hwinfo iftop iotop iptraf iptstate iselect lm-sensors locate lolcat net-tools nethogs nload nmap nmon powertop rng-tools screen screenie smartmontools speedometer speedtest-cli tmux traceroute unattended-upgrades vnstat w3m whowatch
+
     # INSTALL ON EVERYTHING BUT DEBIAN
     if ! [[ "$OS" = "Debian" ]]; then
         sudo apt install -y --install-recommends mytop
@@ -1710,6 +1737,37 @@ if [[ "$CQPWEBSW" = 1 ]]; then
     fi
 
     ####################
+    # REMOVE ANY CURRENT MYSQL AND INSTALL MYSQL 8 +++++
+    ####################
+    if [[ "${MYSQL8}" = 1 ]]; then
+
+        # REMOVE OLD MYSQL VERSION(S). THIS MAY ALREADY HAVE BEEN DONE IN THE
+        # UPGRADEOS SECTION, BUT IT NEVER HURTS TO BE SURE.
+
+        sudo apt purge -y mysql*
+
+        # DOWNLOAD NEW MYSQL VERSION
+        sudo mkdir -p /tmp/mysql8
+        sudo chmod ugo+rwx /tmp/mysql8
+        cd /tmp/mysql8 || exit
+
+        # NOTE: THE MYSQL.COM DOWNLOAD SITE IS SUCH A MESS OF DYNAMIC MENUS, SUBMENUS, SELECTIONS
+        #       AND SO ON THAT IT ISN'T PRACTICAL TO SCRAPE IT FOR THE LATEST .DEB VERSION, SO
+        #       THIS DOWNLOAD URL IS STATIC. YOU MAY OR MAY NOT WANT TO VISIT THE SITE, GET THE
+        #       URL FOR ANY NEWER VERSION, AND USE IT HERE.
+        aria2c "${MYSQLDLURL}"
+
+        sudo dpkg -i mysql-apt-config_0.8.13-1_all.deb
+
+        sudo apt update -y
+
+        sudo apt upgrade -y --install-recommends
+
+        sudo apt install -y --install-recommends mysql-server
+
+    fi
+
+    ####################
     # UPDATE AND INSTALL DISTRO SOFTWARE
     ####################
     sudo apt update -y
@@ -1720,6 +1778,11 @@ if [[ "$CQPWEBSW" = 1 ]]; then
     if ! [[ "$OS" = "Debian" ]]; then
         sudo apt install -y --install-recommends ttf-ubuntu-font-family
     fi
+
+
+
+
+
 
     ####################
     # USER AND GROUP MANAGEMENT &
@@ -2015,7 +2078,7 @@ EOF
 	 \$allow_account_self_registration = true;
 	 \$account_create_contact          = ;
 	 \$account_create_captcha          = false;
-	 \$account_create_one_per_email    = flase;
+	 \$account_create_one_per_email    = false;
 	 \$blowfish_cost                   = 13;
 	 \$create_password_function        = "password_insert_internal";
 
@@ -2425,6 +2488,53 @@ EOF
     sudo chmod ug+rwx "${HOME}/bin/testmail-postfix.sh"
 
 
+
+
+
+    ####################
+    # CREATE SCRIPT TO REPORT CQPWEB AND CWB VERSIONS
+    ####################
+
+    # DELETE ANY OLD VERSION OF THE SCRIPT
+    sudo rm -f "${HOME}/bin/version-report.sh"
+
+    # WRITE SCRIPT TO NEW FILE
+    sudo tee "${HOME}/bin/version-report.sh" <<- EOF >/dev/null 2>&1
+	#!/bin/bash
+
+	# REPORT CQPWEB AND CWB VERSIONS
+	# This script was created automatically by ${SCRIPTNAME} on ${DATE}.
+
+	echo ""
+	echo "${CLBL}${BLD}==========> CQPWEB AND CWB VERSION REPORT...${RST}"
+
+	echo ""
+	echo "${BLD}==========> CQPWEB <==========${RST}"
+	svn info -r HEAD /var/www/html/cqpweb
+
+	echo ""
+	echo "${BLD}==========> CWB <==========${RST}"
+	svn info -r HEAD /home/\${USER}/software/cwb
+
+	echo ""
+	echo "${BLD}==========> CWB-DOC <==========${RST}"
+	svn info -r HEAD /home/\${USER}/software/cwb-doc
+
+	echo ""
+	echo "${BLD}==========> CWB-PERL <==========${RST}"
+	svn info -r HEAD /home/\${USER}/software/cwb-perl
+
+	echo ""
+	echo "${CGRN}${BLD}==========> CQPWEB AND CWB VERSION REPORT DONE${RST}"
+	echo ""
+
+EOF
+
+    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
+    sudo chown "${USER}:${USER}" "${HOME}/bin/version-report.sh"
+    sudo chmod ug+rwx "${HOME}/bin/version-report.sh"
+
+
     ####################
     # CREATE SCRIPT TO MANUALLY CALCULATE STTR
     ####################
@@ -2636,9 +2746,15 @@ fi
 ########################################
 if [[ "${CUSTOMIZEFONTS}" = 1 ]]; then
 
-    if ! [[ "${WEBFONTNAME}" = "YOUR_INFO_HERE" ]]; then
+    # HOMOGENIZE FONT VARIABLE VALUES
+    if [[ "${MAINFONT}" = "YOUR_INFO_HERE" ]]; then MAINFONT=""; fi
+    if [[ "${CONCFONT}" = "YOUR_INFO_HERE" ]]; then CONCFONT=""; fi
+
+
+    # PROCEED IF AT LEAST ONE OF THE FONT VARIABLES ISN'T EMPTY.
+    if [[ "${MAINFONT}" != "" || "${CONCFONT}" != "" ]]; then
         echo ""
-        echo "${CLBL}${BLD}==========> Customizing CQP WEB FONTS...${RST}"
+        echo "${CLBL}${BLD}==========> Customizing CQP FONTS...${RST}"
 
         # SET BASE PATH OF CQPWEB. NO SLASH AT END, PLEASE.
         BASEPATH="/var/www/html/cqpweb"
@@ -2651,9 +2767,18 @@ if [[ "${CUSTOMIZEFONTS}" = 1 ]]; then
             sudo cp -r "${BASEPATH}/css.BAK" "${BASEPATH}/css"
         fi
 
-        # CREATE STRINGS TO PUT IN CSS FILES
-        WEBFONTNAMENOSPACES=$(echo "${WEBFONTNAME}" | sed 's/ /+/g')
-        WEBFONTIMPORT="\@import url('https://fonts.googleapis.com/css?family=${WEBFONTNAMENOSPACES}&display=swap');"
+        # CREATE LIST OF FONT NAMES
+        IMPORTFONTLIST="${MAINFONT}|${CONCFONT}"
+
+        # CHANGE SPACES TO PLUS SIGNS
+        IMPORTFONTLIST=$(echo "${IMPORTFONTLIST}" | sed 's/ /+/g')
+
+        # REMOVE LEADING OR TRAILING |, WHICH HAPPENS IF ONE FONT IS NOT SET.
+        IMPORTFONTLIST=$(echo "$IMPORTFONTLIST" | sed -r 's/^\|//g')
+        IMPORTFONTLIST=$(echo "$IMPORTFONTLIST" | sed -r 's/\|$//g')
+
+        # CREATE STRING FOR IMPORTING FONTS VIA CSS FILES
+#         WEBFONTIMPORT="\@import url('https://fonts.googleapis.com/css?family=${IMPORTFONTLIST}&display=swap');"
 
         # MOVE INTO CSS DIRECTORY
         cd "${BASEPATH}/css" || exit
@@ -2667,28 +2792,78 @@ if [[ "${CUSTOMIZEFONTS}" = 1 ]]; then
             # BREAK IF THERE ARE NO RESULTS
             [ -f "$CURRFILE" ] || break
 
-            # ADD CODE TO DOWNLOAD THE WEB FONT
-            sudo perl -i -p0e "s|/\* end of resets \*/|/* end of resets */\n\n# IMPORT WEB FONT FROM EXTERNAL URL\n${WEBFONTIMPORT}\n|gms" "${CURRFILE}"
+            # ADD CODE TO DOWNLOAD THE WEB FONT(S)
+            sudo perl -i -p0e "s!/\* end of resets \*/!/* end of resets */\n\n# IMPORT WEB FONT FROM EXTERNAL URL\n\@import url('https://fonts.googleapis.com/css?family=${IMPORTFONTLIST}&display=swap');\n!gms" "${CURRFILE}"
 
-            # STANDARDIZE FONT FAMILY LISTS (SOME ONLY HAVE VERDANA, WHILE OTHERS HAVE A FULLER LIST)
+            ##### MAIN FONT #####
+
+            # STANDARDIZE *MAIN FONT* FAMILY LISTS (SOME ONLY HAVE VERDANA, WHILE OTHERS HAVE A FULLER LIST)
             sudo perl -i -p0e "s/Verdana,Arial,Helvetica,sans-serif;/Arial,Helvetica,Verdana,sans-serif;/gi" "${CURRFILE}"
             sudo perl -i -p0e "s/Verdana;/Arial,Helvetica,Verdana,sans-serif;/gi" "${CURRFILE}"
 
-            # ADD USER-SELECTED WEB FONT TO FONT FAMILY LISTS
-            sudo perl -i -p0e "s/Arial,Helvetica,Verdana,sans-serif;/'${WEBFONTNAME}',Arial,Helvetica,Verdana,sans-serif !important;/gi" "${CURRFILE}"
+            # ADD USER-SELECTED WEB FONT TO *MAIN FONT* FAMILY LISTS
+            sudo perl -i -p0e "s/Arial,Helvetica,Verdana,sans-serif;/'${MAINFONT}',Arial,Helvetica,Verdana,sans-serif !important;/gi" "${CURRFILE}"
+
+
+            ##### CONCORDANCE FONT #####
+
+            # ADD USER-SELECTED WEB FONT FAMILY TO *CONCORDACE FONT*
+
+            # td.before
+            sudo perl -i -p0e "s/td\.before\W*?\{\W*?\n\W*?(padding.+?)$/td.before {\n\tfont-family: '${CONCFONT}',monospace \!important;\n\t\$1/gms" "${CURRFILE}"
+
+            # td.after
+            sudo perl -i -p0e "s/td\.after\W*?\{\W*?\n\W*?(padding.+?)$/td.after {\n\tfont-family: '${CONCFONT}',monospace \!important;\n\t\$1/gms" "${CURRFILE}"
+
+            # td.node
+            sudo perl -i -p0e "s/td\.node\W*?\{\W*?\n\W*?(padding.+?)$/td.node {\n\tfont-family: '${CONCFONT}',monospace \!important;\n\t\$1/gms" "${CURRFILE}"
+
+            # td.lineview
+            sudo perl -i -p0e "s/td\.lineview \W*?\{\W*?\n\W*?(padding.+?)$/td.lineview  {\n\tfont-family: '${CONCFONT}',monospace \!important;\n\t\$1/gms" "${CURRFILE}"
+
+            # td.parallel-line
+            sudo perl -i -p0e "s/td\.parallel-line\W*?\{\W*?\n\W*?(padding.+?)$/td.parallel-line {\n\tfont-family: '${CONCFONT}',monospace \!important;\n\t\$1/gms" "${CURRFILE}"
+
+            # td.parallel-kwic
+            sudo perl -i -p0e "s/td\.parallel-kwic\W*?\{\W*?\n\W*?(padding.+?)$/td.parallel-kwic {\n\tfont-family: '${CONCFONT}',monospace \!important;\n\t\$1/gms" "${CURRFILE}"
+
+            # td.text_id - NOTE: Uses MAIN font, not CONCORDANCE font.
+            sudo perl -i -p0e "s/td\.text_id\W*?\{\W*?\n\W*?(padding.+?)$/td.text_id {\n\tfont-family: '${MAINFONT}',monospace \!important;\n\t\$1/gms" "${CURRFILE}"
         done
 
-        echo "${CGRN}${BLD}==========> CQP WEB FONT customization finished.${RST}"
+        echo "${CGRN}${BLD}==========> CQP FONT customization finished.${RST}"
         echo ""
     else
         echo ""
-        echo "${CRED}${BLD}==========> You chose to customize the font in the CQPWEB CSS files, but you did not specify${RST}"
-        echo "${CRED}${BLD}            a font. Please edit ${SCRIPTNAME} and set the ${CORG}WEBFONTNAME${CRED} variable.${RST}"
+        echo "${CRED}${BLD}==========> You chose to customize the font(s) in the CQPWEB CSS files, but you did not specify at least${RST}"
+        echo "${CRED}${BLD}            one font. Please edit ${SCRIPTNAME} and set the ${CORG}MAINFONT${CRED} and/or ${CORG}CONCFONT${CRED} variables.${RST}"
         echo ""
     fi
 
 fi
 
+
+########################################
+# TURN CQPWEB DEBUG ON OR OFF +++++
+########################################
+if [[ "${TURNDEBUGON}" = 1 ]]; then
+    echo ""
+    echo "${CLBL}${BLD}==========> Configuring CQPWEB DEBUG...${RST}"
+
+    configLine "^[# ]*\$print_debug_messages.*$" "\$print_debug_messages         = true;" /var/www/html/cqpweb/lib/config.inc.php >/dev/null 2>&1
+
+    echo "${CGRN}${BLD}==========> CQPWEB DEBUG turned ON.${RST}"
+    echo ""
+else
+    echo ""
+    echo "${CLBL}${BLD}==========> Configuring CQPWEB DEBUG...${RST}"
+
+    configLine "^[# ]*\$print_debug_messages.*$" "\$print_debug_messages         = false;" /var/www/html/cqpweb/lib/config.inc.php >/dev/null 2>&1
+
+    echo "${CGRN}${BLD}==========> CQPWEB DEBUG turned OFF.${RST}"
+    echo ""
+
+fi
 
 
 
@@ -3713,3 +3888,4 @@ cwb_max_ram_usage_cli         = 1024
   IMAGEUPLD=0               # Upload specified image to use as top left/right graphic in CQPweb. Set location and URL below.
    FAVICONUPLD=0             # Upload favicon.ico to root of website?
   FAVICONURL="YOUR_INFO_HERE" # Source URL of favicon.ico.
+     WEBFONTNAME="YOUR_INFO_HERE" # Name of web font. Check out https://fonts.google.com/ for more. Firefox doesn't seem to use
