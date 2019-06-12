@@ -3,25 +3,33 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-06-07
-# VERSION:  71
+# DATE:     2019-06-12
+# VERSION:  72
 # LICENSE:  GNU GPL v3
 
-# DESCRIPTION: This script takes a bare-bones install of Ubuntu 18.04 LTS and sets up Open Corpus
-#              Workbench (OCWB) and CQPweb on it. It can also, optionally, install software and
-#              configure the system for use as a headless server on bare metal, a headless server
-#              in a virtual machine or a desktop with GUI for linguistic work.
+# DESCRIPTION: This script takes an install of certain versions of Ubuntu or Debian and sets up Open
+#              Corpus Workbench (OCWB) and CQPweb on it. It can also, optionally, install software and
+#              configure the system for use as a headless server on bare metal, a headless server in
+#              a virtual machine or a desktop with GUI for linguistic work.
 #
-#              It has been tested on Ubuntu 18.04 Live Server (the default download, aimed at cloud-
-#              based servers), Ubuntu 18.04 Alternative Server (the traditional server), Ubuntu
-#              18.04 Desktop, and Lubuntu 18.04 Desktop in virtual machines, and on Ubuntu Live Server
-#              and Alternative Server on bare metal.
+#              It has been tested on:
+#                - Ubuntu 18.04 LTS Live Server (the default download, aimed at cloud-based servers)
+#                - Ubuntu 18.04 LTS Alternative Server (the traditional server)
+#                - Ubuntu 18.04 LTS Desktop
+#                - Lubuntu 18.04 Desktop
+#                - Debian 9.9 Stable
 #
-#              While I've made every effort to make it work properly, it comes with no guarantees and no
-#              warranties. You can always try it out in a VM first, of course! Bug reports are most welcome!
+#              While I've made every effort to make it work properly, it comes with no guarantees and
+#              no warranties. Bug reports are most welcome!
+
 
 # CHANGE LOG:
 
+# v72
+# - CQPweb:      Database update script now reloads and restarts apache2 after updating.
+# - CQPweb:      Added option to replace the "Menu" text in the T/L corner of most pages with a custom graphic and a
+#                  user-specified URL (on user home, query and admin pages).
+#
 # v71
 # - CQPweb:      The fonts used in concordances are now customizable. A monospace font looks very nice there!
 # - All:         Added a script to report versions of CQPweb, CWB, etc. (~/bin/version-report.sh).
@@ -68,7 +76,7 @@ SCRIPTNAME="cqpweb-instabox.sh"
 # v62
 # - CQPweb:      Adjusted syntax of empty strings in config.inc.php.
 # - CQPweb:      Added creation of script for sending test e-mails via Postfix (in ~/bin).
-# - CQPweb:      Added option to modify certain web pages (set CUSTOMIZEPAGES=1).
+# - CQPweb:      Added option to modify certain web pages (set CUSTPGSIGNUP=1).
 # - CQPweb:      Added message to user telling them what IP address to open in browser to use CQPweb.
 #
 # v61
@@ -91,7 +99,8 @@ SCRIPTNAME="cqpweb-instabox.sh"
 
 ################################################################################
 # SCRIPT CONFIGURATION
-# 0 disables, 1 enables, 2 (or anything else) disables and can mean what you want (e.g. "already run")
+# 0 disables, 1 enables, 2 (or anything else) disables and can mean whatever you
+# want (e.g. 2 = "already run", so you can keep track of what you've done).
 ################################################################################
 
 # SYSTEM CONFIGURATION
@@ -144,24 +153,30 @@ ADMINUSER="YOUR_INFO_HERE"  # CQPweb administrator usernames. Separate multiple 
 # CQPWEB OPTIONS AND CUSTOMIZATIONS.
 # THESE CAN BE RUN INDEPENDENTLY OF THE INSTALLATION OF CQPWEB ITSELF!
 IMAGEUPLD=0                  # Upload specified image to use as top left/right graphic in CQPweb. Set location and URL below.
-  IMAGESOURCE="YOUR_INFO_HERE" # URL of top left/right logo image source file.
-  IMAGETARGET="/var/www/html/cqpweb/css/img/"                             # Destination path of top left/right logo image file.
+  IMAGESOURCE1DIR="YOUR_INFO_HERE"  # URL of top left/right logo image source file PATH. No trailing slash!
+  IMAGESOURCE1FILE="YOUR_INFO_HERE" # URL of top left/right logo image source file.
+  IMAGESOURCE2DIR="YOUR_INFO_HERE"  # URL of an additional image source file PATH. No trailing slash!
+  IMAGESOURCE2FILE="YOUR_INFO_HERE" # URL of an additional image source file.
+  IMAGETARGET="/var/www/html/cqpweb/css/img/" # Destination path of top left/right logo image file.
 FAVICONUPLD=0                # Upload favicon.ico to root of website?
   FAVICONSOURCE="YOUR_INFO_HERE" # Source URL of favicon.ico.
   FAVICONTARGET="/var/www/html/cqpweb/" # Destination directory of favicon.ico.
 CREATECQPWEBSCRIPTS=0        # Create a series of useful scripts in ~/bin.
-CUSTOMIZEPAGES=0             # Customize certain CQPweb web pages. Users will definitely want to customize this.
+CUSTPGSIGNUP=0               # Customize CQPweb signup page. Users will definitely want to customize this customization.
+CUSTPGMENUGRAPHIC=1          # Replaces the word "Menu" in the T/L cell of most pages with a graphic ('IMAGESOURCE2', above) and optional URL.
+  MENUURLUSER="YOUR_INFO_HERE"  # URL to assign to T/L graphic on user home pages.
+  MENUURLQUERY="YOUR_INFO_HERE" # URL to assign to T/L graphic on query pages.
+  MENUURLADMIN="YOUR_INFO_HERE" # URL to assign to T/L graphic on admin pages.
 CUSTOMIZEFONTS=0             # Modify CSS files in order to use a user-specified Google web font for most of the interface and/or
                              #   for concordances. To customize one but not the other, set the font to emtpy ("") or "YOUR_INFO_HERE".
-  MAINFONT="Open Sans"   # Name of Google web font for ALMOST EVERYTHING.
-  CONCFONT="IBM Plex Mono" # Name of Google web font for CONCORDANCE.
+  MAINFONT="Open Sans"       # Name of Google web font for ALMOST EVERYTHING.
+  CONCFONT="Overpass Mono"   # Name of Google web font for CONCORDANCE.
                              # Check out https://fonts.google.com/ for more web fonts. NOTE: Not all fonts seem to work in all browsers.
                              # CONFIRMED WORKING FONTS:
                              # [SANS]: Arimo, Fira Sans, Lato, Noto Sans, Open Sans, PT Sans, Raleway, Roboto, Roboto Condensed
                              # [MONO-SMALL]: Inconsolata, Ubuntu Mono
                              # [MONO-MID]: Oxygen Mono, Space Mono, Overpass Mono, Fira Mono, IBM Plex Mono, Source Code Pro
                              # [MONO-UGLY]: Anonymous Pro, B612 Mono, Cousine, PT Mono
-
 TURNDEBUGON=0                # Set CQPweb to print debug messages.
 
 # CORPORA
@@ -2440,6 +2455,10 @@ EOF
 	# RUN UPDATER
 	sudo php upgrade-database.php
 
+    # RESTART APACHE WEB SERVER
+	sudo systemctl reload apache2
+	sudo systemctl restart apache2
+
 	echo "${CGRN}${BLD}==========> CQPWEB DATABASE HAS BEEN UPGRADED${RST}"
 	echo ""
 
@@ -2670,22 +2689,44 @@ fi
 ########################################
 if [[ "${IMAGEUPLD}" = 1 ]]; then
 
-    # UPLOAD IMAGE FILE(S) TO SERVER IF AN ACTUAL URL HAS BEEN SET
-    if ! [[ "${IMAGETARGET}" = "YOUR_INFO_HERE" && "${IMAGESOURCE}" = "YOUR_INFO_HERE" ]]; then
-        echo ""
-        echo "${CLBL}${BLD}==========> Uploading custom TL/TR IMAGE...${RST}"
+    echo ""
+    echo "${CLBL}${BLD}==========> Uploading CUSTOM IMAGES...${RST}"
 
-        sudo wget -P "${IMAGETARGET}" "${IMAGESOURCE}"
+    # CONCATENATE SOURCE DIRS AND SOURCE FILE NAMES
+    IMAGESOURCE1="${IMAGESOURCE1DIR}/${IMAGESOURCE1FILE}"
+    IMAGESOURCE2="${IMAGESOURCE2DIR}/${IMAGESOURCE2FILE}"
 
-        echo "${CGRN}${BLD}==========> Custom TL/TR IMAGE upload finished.${RST}"
+    # MAKE SURE IMAGE TARGET DIRECTORY IS NOT INVALID
+    if [[ "${IMAGETARGET}" != "YOUR_INFO_HERE" ]] || [[ "${IMAGETARGET}" != "" ]]; then
+
+        # IMAGE 1
+        if [[ "${IMAGESOURCE1FILE}" != "YOUR_INFO_HERE" ]] && [[ "${IMAGESOURCE1FILE}" != "" ]]; then
+            sudo wget -P "${IMAGETARGET}" "${IMAGESOURCE1}"
+        fi
+
+        # IMAGE 2
+        if [[ "${IMAGESOURCE2FILE}" != "YOUR_INFO_HERE" ]] && [[ "${IMAGESOURCE2FILE}" != "" ]]; then
+            sudo wget -P "${IMAGETARGET}" "${IMAGESOURCE2}"
+        fi
+        echo "${CGRN}${BLD}==========> CUSTOM IMAGE upload finished.${RST}"
         echo ""
     else
         echo ""
-        echo "${CRED}${BLD}==========> You must set valid source and target paths for the TL/TR IMAGE!${RST}"
+        if [[ "${IMAGETARGET}" = "YOUR_INFO_HERE" ]] || [[ "${IMAGETARGET}" = "" ]]; then
+            echo "${CRED}${BLD}            You must specify a TARGET DIRECTORY for the image(s)!${RST}"
+        fi
+
+        if [[ "${IMAGESOURCE1FILE}" = "YOUR_INFO_HERE" ]] || [[ "${IMAGESOURCE1FILE}" = "" ]]; then
+            echo "${CRED}${BLD}            You must specify a source URL for image 1!${RST}"
+        fi
+
+        if [[ "${IMAGESOURCE2FILE}" = "YOUR_INFO_HERE" ]] || [[ "${IMAGESOURCE2FILE}" = "" ]]; then
+            echo "${CRED}${BLD}            You must specify a source URL for image 2!${RST}"
+        fi
     fi
 
 else
-    echo "${CORG}${BLD}==========> Skipping custom TL/TR IMAGE upload...${RST}"
+    echo "${CORG}${BLD}==========> Skipping CUSTOM IMAGE upload...${RST}"
 fi
 
 
@@ -2716,10 +2757,10 @@ fi
 ########################################
 # CUSTOMIZE CERTAIN CQPWEB WEB PAGES
 ########################################
-if [[ "${CUSTOMIZEPAGES}" = 1 ]]; then
+if [[ "${CUSTPGSIGNUP}" = 1 ]]; then
 
     echo ""
-    echo "${CLBL}${BLD}==========> Customizing CQP WEBPAGES...${RST}"
+    echo "${CLBL}${BLD}==========> Customizing CQPWEB SIGN UP PAGE...${RST}"
 
     ########## CUSTOMIZE /lib/useracct-forms.php
     CURRFILE="/var/www/html/cqpweb/lib/useracct-forms.php"
@@ -2734,7 +2775,126 @@ if [[ "${CUSTOMIZEPAGES}" = 1 ]]; then
 
     sudo perl -i -p0e 's/<tr>[\n\t ]+?<td class="concordgrey" colspan="2">[\n\t ]+?<p class="spacer">&nbsp;<\/p>[\n\t ]+?<p>[\n\t ]+?The following three questions.+?<\/tr>/\n/gms' "${CURRFILE}"
 
-    echo "${CGRN}${BLD}==========> CQP WEBPAGE customization finished.${RST}"
+    echo "${CGRN}${BLD}==========> CQPWEB SIGN UP PAGE customization finished.${RST}"
+    echo ""
+fi
+
+
+
+########################################
+# REPLACE THE WORD "MENU" IN T/L OF MOST
+# PAGES WITH A GRAPHIC AND OPTIONAL URL
+########################################
+if [[ "${CUSTPGMENUGRAPHIC}" = 1 ]]; then
+
+    echo ""
+    echo "${CLBL}${BLD}==========> MODIFYING T/L 'MENU' with a custom graphic...${RST}"
+
+    # MOVE INTO DIRECTORY WITH WEB PAGE FILES
+    cd /var/www/html/cqpweb/lib || exit
+
+    # FILES TO MOD: userhome.php , queryhome.php , adminhome.php
+
+    # MODIFY USERHOME.PHP
+    if [[ $MENUURLUSER != "YOUR_INFO_HERE" ]] && [[ $MENUURLUSER != "" ]]; then
+
+        CURRFILE="userhome.php"
+
+        # BACK UP PHP FILE
+        if ! [[ -f "${CURRFILE}.BAK" ]]; then
+            sudo cp "${CURRFILE}" "${CURRFILE}.BAK"
+        else
+            sudo cp "${CURRFILE}.BAK" "${CURRFILE}"
+        fi
+
+        # CREATE CUSTOM IMAGE STRING
+        if [[ "$IMAGESOURCE2FILE" != "YOUR_INFO_HERE" ]] && [[ "$IMAGESOURCE2FILE" != "" ]]; then
+            IMGSTRING="<img src=\"../css/img/${IMAGESOURCE2FILE}\" width=\"200\" height=\"\">"
+        else
+            IMGSTRING="Menu"
+        fi
+
+        # CREATE CUSTOM URL STRING
+        if [[ "$MENUURLUSER" != "YOUR_INFO_HERE" ]] && [[ "$MENUURLUSER" != "" ]]; then
+            URLSTRING="\" href=\"$MENUURLUSER\">"
+        else
+            URLSTRING="\">"
+        fi
+
+        # PERFORM STRING REPLACEMENT
+        sudo perl -i -p0e "s|<a class=\"menuHeaderItem\">Menu</a>|<a class=\"menuHeaderItem${URLSTRING}${IMGSTRING}</a>|gms" "${CURRFILE}"
+
+        # USE AS REPLACEMENT STRING!
+        #  <a class=\"menuHeaderItem${URLSTRING}${IMGSTRING}</a>
+    fi
+
+    # MODIFY QUERYHOME.PHP
+    if [[ $MENUURLQUERY != "YOUR_INFO_HERE" ]] && [[ $MENUURLQUERY != "" ]]; then
+
+        CURRFILE="queryhome.php"
+
+        # BACK UP PHP FILE
+        if ! [[ -f "${CURRFILE}.BAK" ]]; then
+            sudo cp "${CURRFILE}" "${CURRFILE}.BAK"
+        else
+            sudo cp "${CURRFILE}.BAK" "${CURRFILE}"
+        fi
+
+        # CREATE CUSTOM IMAGE STRING
+        if [[ "$IMAGESOURCE2FILE" != "YOUR_INFO_HERE" ]] && [[ "$IMAGESOURCE2FILE" != "" ]]; then
+            IMGSTRING="<img src=\"../css/img/${IMAGESOURCE2FILE}\" width=\"200\" height=\"\">"
+        else
+            IMGSTRING="Menu"
+        fi
+
+        # CREATE CUSTOM URL STRING
+        if [[ "$MENUURLQUERY" != "YOUR_INFO_HERE" ]] && [[ "$MENUURLQUERY" != "" ]]; then
+            URLSTRING="\" href=\"$MENUURLQUERY\">"
+        else
+            URLSTRING="\">"
+        fi
+
+        # PERFORM STRING REPLACEMENT
+        sudo perl -i -p0e "s|<a class=\"menuHeaderItem\">Menu</a>|<a class=\"menuHeaderItem${URLSTRING}${IMGSTRING}</a>|gms" "${CURRFILE}"
+
+        # USE AS REPLACEMENT STRING!
+        #  <a class=\"menuHeaderItem${URLSTRING}${IMGSTRING}</a>
+    fi
+
+    # MODIFY ADMINHOME.PHP
+    if [[ $MENUURLADMIN != "YOUR_INFO_HERE" ]] && [[ $MENUURLADMIN != "" ]]; then
+
+        CURRFILE="adminhome.php"
+
+        # BACK UP PHP FILE
+        if ! [[ -f "${CURRFILE}.BAK" ]]; then
+            sudo cp "${CURRFILE}" "${CURRFILE}.BAK"
+        else
+            sudo cp "${CURRFILE}.BAK" "${CURRFILE}"
+        fi
+
+        # CREATE CUSTOM IMAGE STRING
+        if [[ "$IMAGESOURCE2FILE" != "YOUR_INFO_HERE" ]] && [[ "$IMAGESOURCE2FILE" != "" ]]; then
+            IMGSTRING="<img src=\"../css/img/${IMAGESOURCE2FILE}\" width=\"200\" height=\"\">"
+        else
+            IMGSTRING="Menu"
+        fi
+
+        # CREATE CUSTOM URL STRING
+        if [[ "$MENUURLADMIN" != "YOUR_INFO_HERE" ]] && [[ "$MENUURLADMIN" != "" ]]; then
+            URLSTRING="\" href=\"$MENUURLADMIN\">"
+        else
+            URLSTRING="\">"
+        fi
+
+        # PERFORM STRING REPLACEMENT
+        sudo perl -i -p0e "s|<a class=\"menuHeaderItem\">Menu</a>|<a class=\"menuHeaderItem${URLSTRING}${IMGSTRING}</a>|gms" "${CURRFILE}"
+
+        # USE AS REPLACEMENT STRING!
+        #  <a class=\"menuHeaderItem${URLSTRING}${IMGSTRING}</a>
+    fi
+
+    echo "${CGRN}${BLD}==========> MODIFYING T/L 'MENU' with custom graphic finished.${RST}"
     echo ""
 fi
 
@@ -3886,6 +4046,7 @@ fi
        FREELINGESCLMODS=0   # Modify FreeLing's Chilean Spanish install.
 cwb_max_ram_usage_cli         = 1024
   IMAGEUPLD=0               # Upload specified image to use as top left/right graphic in CQPweb. Set location and URL below.
+  IMAGESOURCE="YOUR_INFO_HERE" # URL of top left/right logo image source file.
    FAVICONUPLD=0             # Upload favicon.ico to root of website?
   FAVICONURL="YOUR_INFO_HERE" # Source URL of favicon.ico.
      WEBFONTNAME="YOUR_INFO_HERE" # Name of web font. Check out https://fonts.google.com/ for more. Firefox doesn't seem to use
