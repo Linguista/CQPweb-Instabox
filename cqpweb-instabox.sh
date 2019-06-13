@@ -4,7 +4,7 @@ SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
 # DATE:     2019-06-12
-# VERSION:  72
+# VERSION:  73
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes an install of certain versions of Ubuntu or Debian and sets up Open
@@ -25,8 +25,14 @@ SCRIPTNAME="cqpweb-instabox.sh"
 
 # CHANGE LOG:
 
+# v73
+# - CQPweb:      Removed setting up Postfix mail server from installation presets. While this code does
+#                  indeed install a working mail server, CQPweb does NOT use it, and can't send e-mails
+#                  once it's installed! Downside: server utils like fail2ban now can't send e-mails.
+# - CQPweb:      Added a confirmation dialog with warning when installing Postfix.
+#
 # v72
-# - CQPweb:      Database update script now reloads and restarts apache2 after updating.
+# - CQPweb:      Database update script now reloadgs and restarts apache2 after updating.
 # - CQPweb:      Added option to replace the "Menu" text in the T/L corner of most pages with a custom graphic and a
 #                  user-specified URL (on user home, query and admin pages).
 #
@@ -157,13 +163,13 @@ IMAGEUPLD=0                  # Upload specified image to use as top left/right g
   IMAGESOURCE1FILE="YOUR_INFO_HERE" # URL of top left/right logo image source file.
   IMAGESOURCE2DIR="YOUR_INFO_HERE"  # URL of an additional image source file PATH. No trailing slash!
   IMAGESOURCE2FILE="YOUR_INFO_HERE" # URL of an additional image source file.
-  IMAGETARGET="/var/www/html/cqpweb/css/img/" # Destination path of top left/right logo image file.
+  IMAGETARGET="/var/www/html/cqpweb/css/img/"            # Destination path of top left/right logo image file.
 FAVICONUPLD=0                # Upload favicon.ico to root of website?
   FAVICONSOURCE="YOUR_INFO_HERE" # Source URL of favicon.ico.
   FAVICONTARGET="/var/www/html/cqpweb/" # Destination directory of favicon.ico.
 CREATECQPWEBSCRIPTS=0        # Create a series of useful scripts in ~/bin.
 CUSTPGSIGNUP=0               # Customize CQPweb signup page. Users will definitely want to customize this customization.
-CUSTPGMENUGRAPHIC=1          # Replaces the word "Menu" in the T/L cell of most pages with a graphic ('IMAGESOURCE2', above) and optional URL.
+CUSTPGMENUGRAPHIC=0          # Replaces the word "Menu" in the T/L cell of most pages with a graphic ('IMAGESOURCE2', above) and optional URL.
   MENUURLUSER="YOUR_INFO_HERE"  # URL to assign to T/L graphic on user home pages.
   MENUURLQUERY="YOUR_INFO_HERE" # URL to assign to T/L graphic on query pages.
   MENUURLADMIN="YOUR_INFO_HERE" # URL to assign to T/L graphic on admin pages.
@@ -511,7 +517,7 @@ elif [[ "$USERARG" = "serverdeluxe" ]]; then
     # CORPORA
     CORPDICKENS=1
     # ADDITIONAL SYSTEM SOFTWARE
-    MAILSW=1
+    MAILSW=0
     SECURITYSW=1
     UFWSW=1
     UPSSW=0
@@ -3065,154 +3071,165 @@ if [[ "$MAILSW" = 1 ]]; then
     echo ""
     echo "${CLBL}${BLD}==========> Installing MAIL SERVER...${RST}"
 
-    # UPDATE SYSTEM SOFTWARE
-    sudo apt update -y
-    sudo apt upgrade -y
-
-    # REMOVE EVERY LAST VESTIGE OF SENDMAIL
-    sudo apt remove sendmail -y
-    sudo apt purge sendmail -y
-
+    echo "${CRED}${BLD}            WARNING!${CORG} While this will correctly install the Postfix mail server, and system utilities${RST}"
+    echo "${CORG}${BLD}            like fail2ban will work properly with it, ${CRED}CQPweb cannot use it${CORG} and will not be able to send${RST}"
+    echo "${CORG}${BLD}            e-mails if you install this. So ${CRED}you almost certainly do NOT want to proceed!${RST}"
     echo ""
-    echo "${CORG}${BLD}We will now install the Postfix mail server. If asked, choose the following options...${RST}"
-    echo        "${CWHT} - Type of Mail Configuration:${RST} ${CORG}${BLD}Internet${RST}"
-    echo        "${CWHT} - System mail name:          ${RST} ${CORG}${BLD}${MAILSERVERURL}${RST}"
-    echo ""
-    read -r -p "${CORG}${BLD}            Press any key to continue (or wait 10 seconds)... ${RST}" -n 1 -t 10 -s
-    echo ""
+    read -r -p "            ${CORG}${BLD}Are you REALLY sure you want to install Postfix? (y/n) ${RST}" ANSWER
 
-    sudo apt install -y --install-recommends mailutils mailutils-mh libsasl2-2 libsasl2-modules ca-certificates postfix secure-delete
+    if [[ "$ANSWER" = [yY] || "$ANSWER" = [yY][eE][sS] ]]; then
 
-    # IF BACKUP OF CONFIG FILE EXISTS, RESTORE IT BEFORE PROCEEDING. OTHERWISE, MAKE BACKUP
-    if [[ -f "/etc/postfix/main.cf.BAK" ]]; then
-        # RESTORE BACKUP
-        sudo rm /etc/postfix/main.cf
-        sudo cp /etc/postfix/main.cf.BAK /etc/postfix/main.cf
+        # UPDATE SYSTEM SOFTWARE
+        sudo apt update -y
+        sudo apt upgrade -y
+
+        # REMOVE EVERY LAST VESTIGE OF SENDMAIL
+        sudo apt remove sendmail -y
+        sudo apt purge sendmail -y
+
+        echo ""
+        echo "${CORG}${BLD}We will now install the Postfix mail server. If asked, choose the following options...${RST}"
+        echo        "${CWHT} - Type of Mail Configuration:${RST} ${CORG}${BLD}Internet${RST}"
+        echo        "${CWHT} - System mail name:          ${RST} ${CORG}${BLD}${MAILSERVERURL}${RST}"
+        echo ""
+        read -r -p "${CORG}${BLD}            Press any key to continue (or wait 10 seconds)... ${RST}" -n 1 -t 10 -s
+        echo ""
+
+        sudo apt install -y --install-recommends mailutils mailutils-mh libsasl2-2 libsasl2-modules ca-certificates postfix secure-delete
+
+        # IF BACKUP OF CONFIG FILE EXISTS, RESTORE IT BEFORE PROCEEDING. OTHERWISE, MAKE BACKUP
+        if [[ -f "/etc/postfix/main.cf.BAK" ]]; then
+            # RESTORE BACKUP
+            sudo rm /etc/postfix/main.cf
+            sudo cp /etc/postfix/main.cf.BAK /etc/postfix/main.cf
+        else
+            # MAKE BACKUP
+            sudo cp /etc/postfix/main.cf /etc/postfix/main.cf.BAK
+        fi
+
+        # CONFIGURE THE POSTFIX MTA SERVER
+        configLine "^myhostname[ =].*"      "myhostname = ${OUTMAILSERVER}" /etc/postfix/main.cf              >/dev/null 2>&1
+        configLine "^inet_interfaces[ =].*" "inet_interfaces = loopback-only" /etc/postfix/main.cf            >/dev/null 2>&1
+        configLine "^relayhost[ =].*"       "relayhost = [${OUTMAILSERVER}]:${SMTPPORT}" /etc/postfix/main.cf >/dev/null 2>&1
+
+        # NOTE: If you run this script more than one, you will end up with multiple copies of the following
+        #       config entries, possibly with multiple values. PRUNE IT MANUALLY IF THIS HAPPENS!
+        echo "smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd"              | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
+        echo "smtp_sasl_auth_enable = yes"                                          | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
+        echo "smtp_sasl_security_options = noplaintext noanonymous"                 | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
+        echo "smtp_sender_dependent_authentication = yes"                           | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
+        echo "smtp_connection_cache_on_demand = no"                                 | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
+        echo "sender_dependent_relayhost_maps = hash:/etc/postfix/sender_dependent" | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
+        echo "sender_canonical_maps = hash:/etc/postfix/sender_canonical"           | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
+        echo "smtp_sasl_tls_security_options = noanonymous"                         | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
+        echo "smtp_tls_note_starttls_offer = yes"                                   | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
+        echo "smtp_tls_security_level = encrypt"                                    | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
+        echo "smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt"                 | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
+        echo "smtp_tls_wrappermode = yes"                                           | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
+        echo "smtp_use_tls = yes"                                                   | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
+
+        # REMOVE OLD USERNAME/PASSWORD FILES
+        sudo rm -f /etc/postfix/sasl_passwd
+        sudo rm -f /etc/postfix/sender_dependent
+        sudo rm -f /etc/postfix/sender_canonical
+
+        # CREATE USERNAME/PASSWORD FILES
+        sudo touch /etc/postfix/sasl_passwd
+        sudo touch /etc/postfix/sender_dependent
+        sudo touch /etc/postfix/sender_canonical
+
+        # IF NO E-MAIL PASSWORD WAS SET ABOVE IN THE CONFIGURATION SECTION, PROMPT FOR ONE NOW
+        if [[ "$MAILSERVERPWD" = "" ]] || [[ "$MAILSERVERPWD" = "YOUR_INFO_HERE" ]]; then
+
+            # ASK FOR PASSWORD AND CONFIRMATION, COMPARE THEM, AND ACT ACCORDINGLY
+            while true; do
+
+                # UNSET VARIABLES TO START AFRESH
+                unset MAILSERVERPWD
+                unset MAILSERVERPWD2
+
+                echo ""
+
+                # GET PASSWORD: FIRST ATTEMPT
+                prompt="${CWHT}${BLD}Enter the password for your e-mail server: ${RST}"
+                while IFS= read -r -p "$prompt" -r -s -n 1 char; do
+                    if [[ $char == $'\0' ]]; then
+                        break
+                    fi
+                    prompt='*'
+                    MAILSERVERPWD+="$char"
+                done
+
+                echo ""
+
+                # GET PASSWORD: SECOND ATTEMPT
+                prompt="${CWHT}${BLD}Confirm the password for your e-mail server: ${RST}"
+                while IFS= read -r -p "$prompt" -r -s -n 1 char; do
+                    if [[ $char == $'\0' ]]; then
+                        break
+                    fi
+                    prompt='*'
+                    MAILSERVERPWD2+="$char"
+                done
+
+                echo ""
+
+                # COMPARE PASSWORDS TO SEE IF THEY'RE THE SAME
+                [[ "$MAILSERVERPWD" = "$MAILSERVERPWD2" ]] && break || echo -e "\\n${CRED}${BLD}Sorry, the passwords do not match! Please try again...${RST}"
+            done
+
+            # PASSWORDS MATCH! CONTINUE ON WITH SCRIPT.
+            echo ""
+            echo "${CGRN}${BLD}PASSWORDS MATCH!${RST}"
+            echo ""
+        fi
+
+        # ADD INFO TO USERNAME/PASSWORD FILES
+        echo "${OUTMAILSERVER}:${SMTPPORT} ${ADMINMAILADDR}:${MAILSERVERPWD}" | sudo tee -a /etc/postfix/sasl_passwd  >/dev/null 2>&1
+        echo "${ADMINMAILADDR} ${OUTMAILSERVER}:${SMTPPORT}" | sudo tee -a /etc/postfix/sender_dependent        >/dev/null 2>&1
+
+        # REMOVE ANY OLD USERNAME/PASSWORD FILES
+        sudo rm -f /etc/postfix/sasl_passwd.db
+        sudo rm -f /etc/postfix/sender_dependent.db
+        sudo rm -f /etc/postfix/sender_canonical.db
+
+        # HASH THE USERNAME/PASSWORD FILES
+        sudo postmap /etc/postfix/sasl_passwd
+        sudo postmap /etc/postfix/sender_dependent
+        sudo postmap /etc/postfix/sender_canonical
+
+        # SECURELY DELETE THE PLAINTEXT USERNAME/PASSWORD FILES
+        sudo srm -l /etc/postfix/sasl_passwd
+        sudo srm -l /etc/postfix/sender_dependent
+        sudo srm -l /etc/postfix/sender_canonical
+
+        # SECURE THE HASHED USERNAME/PASSWORD FILES
+        sudo chown root:root /etc/postfix/sasl_passwd.db /etc/postfix/sender_dependent.db /etc/postfix/sender_canonical.db
+        sudo chmod 0600 /etc/postfix/sasl_passwd.db /etc/postfix/sender_dependent.db /etc/postfix/sender_canonical.db
+
+        # RESTART MAIL SERVER
+        sudo systemctl restart postfix
+
+        # SEND A TEST MESSAGE
+        echo ""
+        echo "${CORG}${BLD}We will now send a test e-mail to ${CWHT}${PERSONALMAILADDR}${CORG} via ${CWHT}${OUTMAILSERVER}:${SMTPPORT}${CORG}.${RST}"
+        echo "${CORG}${BLD}If things don't work, look at 'sudo tail -f /var/log/mail.log'.${RST}"
+        echo ""
+
+        echo -e "Hi!\\n\\nThis is the Postfix send-only mail server on ${LOCALHOSTNAME} (${INTERNALIP} / ${EXTERNALIP}). I'm sending this test e-mail to ${PERSONALMAILADDR} via ${OUTMAILSERVER}:${SMTPPORT}.\\n\\nIt's currently ${TIME} on ${DATE}.\\n\\nHave a nice day!" | mail -s "Test mail from Postfix on $LOCALHOSTNAME" -a "From: ${ADMINMAILADDR}" "${PERSONALMAILADDR}"
+
+        read -r -p "${CORG}${BLD}            Press any key to continue (or wait 10 seconds)... ${RST}" -n 1 -t 10 -s
+        echo ""
+
+        echo "${CGRN}${BLD}==========> MAIL SERVER installation finished.${RST}"
+        echo ""
     else
-        # MAKE BACKUP
-        sudo cp /etc/postfix/main.cf /etc/postfix/main.cf.BAK
+        echo "${CRED}${BLD}==========> Aborting MAIL SERVER installation...${RST}"
     fi
 
-    # CONFIGURE THE POSTFIX MTA SERVER
-    configLine "^myhostname[ =].*"      "myhostname = ${OUTMAILSERVER}" /etc/postfix/main.cf              >/dev/null 2>&1
-    configLine "^inet_interfaces[ =].*" "inet_interfaces = loopback-only" /etc/postfix/main.cf            >/dev/null 2>&1
-    configLine "^relayhost[ =].*"       "relayhost = [${OUTMAILSERVER}]:${SMTPPORT}" /etc/postfix/main.cf >/dev/null 2>&1
-
-    # NOTE: If you run this script more than one, you will end up with multiple copies of the following
-    #       config entries, possibly with multiple values. PRUNE IT MANUALLY IF THIS HAPPENS!
-    echo "smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd"              | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
-    echo "smtp_sasl_auth_enable = yes"                                          | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
-    echo "smtp_sasl_security_options = noplaintext noanonymous"                 | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
-    echo "smtp_sender_dependent_authentication = yes"                           | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
-    echo "smtp_connection_cache_on_demand = no"                                 | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
-    echo "sender_dependent_relayhost_maps = hash:/etc/postfix/sender_dependent" | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
-    echo "sender_canonical_maps = hash:/etc/postfix/sender_canonical"           | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
-    echo "smtp_sasl_tls_security_options = noanonymous"                         | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
-    echo "smtp_tls_note_starttls_offer = yes"                                   | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
-    echo "smtp_tls_security_level = encrypt"                                    | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
-    echo "smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt"                 | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
-    echo "smtp_tls_wrappermode = yes"                                           | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
-    echo "smtp_use_tls = yes"                                                   | sudo tee -a /etc/postfix/main.cf  >/dev/null 2>&1
-
-    # REMOVE OLD USERNAME/PASSWORD FILES
-    sudo rm -f /etc/postfix/sasl_passwd
-    sudo rm -f /etc/postfix/sender_dependent
-    sudo rm -f /etc/postfix/sender_canonical
-
-    # CREATE USERNAME/PASSWORD FILES
-    sudo touch /etc/postfix/sasl_passwd
-    sudo touch /etc/postfix/sender_dependent
-    sudo touch /etc/postfix/sender_canonical
-
-    # IF NO E-MAIL PASSWORD WAS SET ABOVE IN THE CONFIGURATION SECTION, PROMPT FOR ONE NOW
-    if [[ "$MAILSERVERPWD" = "" ]] || [[ "$MAILSERVERPWD" = "YOUR_INFO_HERE" ]]; then
-
-        # ASK FOR PASSWORD AND CONFIRMATION, COMPARE THEM, AND ACT ACCORDINGLY
-        while true; do
-
-            # UNSET VARIABLES TO START AFRESH
-            unset MAILSERVERPWD
-            unset MAILSERVERPWD2
-
-            echo ""
-
-            # GET PASSWORD: FIRST ATTEMPT
-            prompt="${CWHT}${BLD}Enter the password for your e-mail server: ${RST}"
-            while IFS= read -r -p "$prompt" -r -s -n 1 char; do
-                if [[ $char == $'\0' ]]; then
-                    break
-                fi
-                prompt='*'
-                MAILSERVERPWD+="$char"
-            done
-
-            echo ""
-
-            # GET PASSWORD: SECOND ATTEMPT
-            prompt="${CWHT}${BLD}Confirm the password for your e-mail server: ${RST}"
-            while IFS= read -r -p "$prompt" -r -s -n 1 char; do
-                if [[ $char == $'\0' ]]; then
-                    break
-                fi
-                prompt='*'
-                MAILSERVERPWD2+="$char"
-            done
-
-            echo ""
-
-            # COMPARE PASSWORDS TO SEE IF THEY'RE THE SAME
-            [[ "$MAILSERVERPWD" = "$MAILSERVERPWD2" ]] && break || echo -e "\\n${CRED}${BLD}Sorry, the passwords do not match! Please try again...${RST}"
-        done
-
-        # PASSWORDS MATCH! CONTINUE ON WITH SCRIPT.
-        echo ""
-        echo "${CGRN}${BLD}PASSWORDS MATCH!${RST}"
-        echo ""
-    fi
-
-    # ADD INFO TO USERNAME/PASSWORD FILES
-    echo "${OUTMAILSERVER}:${SMTPPORT} ${ADMINMAILADDR}:${MAILSERVERPWD}" | sudo tee -a /etc/postfix/sasl_passwd  >/dev/null 2>&1
-    echo "${ADMINMAILADDR} ${OUTMAILSERVER}:${SMTPPORT}" | sudo tee -a /etc/postfix/sender_dependent        >/dev/null 2>&1
-
-    # REMOVE ANY OLD USERNAME/PASSWORD FILES
-    sudo rm -f /etc/postfix/sasl_passwd.db
-    sudo rm -f /etc/postfix/sender_dependent.db
-    sudo rm -f /etc/postfix/sender_canonical.db
-
-    # HASH THE USERNAME/PASSWORD FILES
-    sudo postmap /etc/postfix/sasl_passwd
-    sudo postmap /etc/postfix/sender_dependent
-    sudo postmap /etc/postfix/sender_canonical
-
-    # SECURELY DELETE THE PLAINTEXT USERNAME/PASSWORD FILES
-    sudo srm -l /etc/postfix/sasl_passwd
-    sudo srm -l /etc/postfix/sender_dependent
-    sudo srm -l /etc/postfix/sender_canonical
-
-    # SECURE THE HASHED USERNAME/PASSWORD FILES
-    sudo chown root:root /etc/postfix/sasl_passwd.db /etc/postfix/sender_dependent.db /etc/postfix/sender_canonical.db
-    sudo chmod 0600 /etc/postfix/sasl_passwd.db /etc/postfix/sender_dependent.db /etc/postfix/sender_canonical.db
-
-    # RESTART MAIL SERVER
-    sudo systemctl restart postfix
-
-    # SEND A TEST MESSAGE
-    echo ""
-    echo "${CORG}${BLD}We will now send a test e-mail to ${CWHT}${PERSONALMAILADDR}${CORG} via ${CWHT}${OUTMAILSERVER}:${SMTPPORT}${CORG}.${RST}"
-    echo "${CORG}${BLD}If things don't work, look at 'sudo tail -f /var/log/mail.log'.${RST}"
-    echo ""
-
-    echo -e "Hi!\\n\\nThis is the Postfix send-only mail server on ${LOCALHOSTNAME} (${INTERNALIP} / ${EXTERNALIP}). I'm sending this test e-mail to ${PERSONALMAILADDR} via ${OUTMAILSERVER}:${SMTPPORT}.\\n\\nIt's currently ${TIME} on ${DATE}.\\n\\nHave a nice day!" | mail -s "Test mail from Postfix on $LOCALHOSTNAME" -a "From: ${ADMINMAILADDR}" "${PERSONALMAILADDR}"
-
-    read -r -p "${CORG}${BLD}            Press any key to continue (or wait 10 seconds)... ${RST}" -n 1 -t 10 -s
-    echo ""
-
-    echo "${CGRN}${BLD}==========> MAIL SERVER installation finished.${RST}"
-    echo ""
 else
     echo "${CORG}${BLD}==========> Skipping MAIL SERVER installation...${RST}"
 fi
-
 
 ########################################
 # INSTALL SECURITY SOFTWARE AND HARDEN SERVER
