@@ -3,8 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-06-12
-# VERSION:  73
+# DATE:     2019-06-17
+# VERSION:  74
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes an install of certain versions of Ubuntu or Debian and sets up Open
@@ -25,6 +25,9 @@ SCRIPTNAME="cqpweb-instabox.sh"
 
 # CHANGE LOG:
 
+# v74
+# - CQP+CWB:     Enchanced the version-check script that is created in ~/bin.
+#
 # v73
 # - CQPweb:      Removed setting up Postfix mail server from installation presets. While this code does
 #                  indeed install a working mail server, CQPweb does NOT use it, and can't send e-mails
@@ -98,8 +101,7 @@ SCRIPTNAME="cqpweb-instabox.sh"
 # - Pre-release development.
 
 # TODO:
-# - Properly configure PHP mail server. As it stands, it fails to send e-mails. Can it be
-#   made to use Postfix, which does work?
+# - PHP can now send e-mails. But fail2ban and other system utils can't. This needs fixed.
 # - Configure server to use HTTPS and get SSL certificate automatically from somewhere.
 
 
@@ -167,7 +169,7 @@ IMAGEUPLD=0                  # Upload specified image to use as top left/right g
 FAVICONUPLD=0                # Upload favicon.ico to root of website?
   FAVICONSOURCE="YOUR_INFO_HERE" # Source URL of favicon.ico.
   FAVICONTARGET="/var/www/html/cqpweb/" # Destination directory of favicon.ico.
-CREATECQPWEBSCRIPTS=0        # Create a series of useful scripts in ~/bin.
+CREATECQPWEBSCRIPTS=1        # Create a series of useful scripts in ~/bin.
 CUSTPGSIGNUP=0               # Customize CQPweb signup page. Users will definitely want to customize this customization.
 CUSTPGMENUGRAPHIC=0          # Replaces the word "Menu" in the T/L cell of most pages with a graphic ('IMAGESOURCE2', above) and optional URL.
   MENUURLUSER="YOUR_INFO_HERE"  # URL to assign to T/L graphic on user home pages.
@@ -2099,7 +2101,7 @@ EOF
 	 \$allow_account_self_registration = true;
 	 \$account_create_contact          = ;
 	 \$account_create_captcha          = false;
-	 \$account_create_one_per_email    = false;
+	 \$account_create_one_per_email    = true;
 	 \$blowfish_cost                   = 13;
 	 \$create_password_function        = "password_insert_internal";
 
@@ -2513,9 +2515,6 @@ EOF
     sudo chmod ug+rwx "${HOME}/bin/testmail-postfix.sh"
 
 
-
-
-
     ####################
     # CREATE SCRIPT TO REPORT CQPWEB AND CWB VERSIONS
     ####################
@@ -2535,19 +2534,27 @@ EOF
 
 	echo ""
 	echo "${BLD}==========> CQPWEB <==========${RST}"
-	svn info -r HEAD /var/www/html/cqpweb
+	echo "CURRENT REVISION: \$(svn info --show-item revision /var/www/html/cqpweb)"
+	echo "LATEST REVISION:  \$(svn info -r HEAD /var/www/html/cqpweb | grep 'Revision:' | sed 's/Revision: //')"
+	echo "LAST MODIFIED:    \$(svn info -r HEAD /var/www/html/cqpweb | grep 'Last Changed Rev:' | sed 's/Last Changed Rev: //')"
 
 	echo ""
 	echo "${BLD}==========> CWB <==========${RST}"
-	svn info -r HEAD /home/\${USER}/software/cwb
+	echo "CURRENT REVISION: \$(svn info --show-item revision /home/\${USER}/software/cwb)"
+	echo "LATEST REVISION:  \$(svn info -r HEAD /home/\${USER}/software/cwb | grep 'Revision:' | sed 's/Revision: //')"
+	echo "LAST MODIFIED:    \$(svn info -r HEAD /home/\${USER}/software/cwb | grep 'Last Changed Rev:' | sed 's/Last Changed Rev: //')"
 
 	echo ""
 	echo "${BLD}==========> CWB-DOC <==========${RST}"
-	svn info -r HEAD /home/\${USER}/software/cwb-doc
+	echo "CURRENT REVISION: \$(svn info --show-item revision /home/\${USER}/software/cwb-doc)"
+	echo "LATEST REVISION:  \$(svn info -r HEAD /home/\${USER}/software/cwb-doc | grep 'Revision:' | sed 's/Revision: //')"
+	echo "LAST MODIFIED:    \$(svn info -r HEAD /home/\${USER}/software/cwb-doc | grep 'Last Changed Rev:' | sed 's/Last Changed Rev: //')"
 
 	echo ""
 	echo "${BLD}==========> CWB-PERL <==========${RST}"
-	svn info -r HEAD /home/\${USER}/software/cwb-perl
+	echo "CURRENT REVISION: \$(svn info --show-item revision /home/\${USER}/software/cwb-perl)"
+	echo "LATEST REVISION:  \$(svn info -r HEAD /home/\${USER}/software/cwb-perl | grep 'Revision:' | sed 's/Revision: //')"
+	echo "LAST MODIFIED:    \$(svn info -r HEAD /home/\${USER}/software/cwb-perl | grep 'Last Changed Rev:' | sed 's/Last Changed Rev: //')"
 
 	echo ""
 	echo "${CGRN}${BLD}==========> CQPWEB AND CWB VERSION REPORT DONE${RST}"
