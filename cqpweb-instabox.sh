@@ -3,8 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-06-17
-# VERSION:  74
+# DATE:     2019-07-10
+# VERSION:  76
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes an install of certain versions of Ubuntu or Debian and sets up Open
@@ -25,6 +25,13 @@ SCRIPTNAME="cqpweb-instabox.sh"
 
 # CHANGE LOG:
 
+# v76
+# - Changed SourceForce URL to point to the new branch
+# - Added autoremove to most package installation commands.
+#
+# v75
+# - Fixed some folder and file ownership/permissions issues.
+#
 # v74
 # - CQP+CWB:     Enchanced the version-check script that is created in ~/bin.
 #
@@ -145,7 +152,7 @@ CWB=0                    # Install CORPUS WORKBENCH (CWB)
   CWBPLATFORM="linux-64" # Platform to compile CWPweb for. OPTIONS: cygwin, darwin, darwin-64, darwin-brew, darwin-port-core2,
                          #   darwin-universal, linux, linux-64, linux-opteron, mingw-cross, mingw-native, solaris, unix
   CWBSITE="standard"     # Location for binary installation. 'standard'=/usr/local tree; 'beta-install'=/usr/local/cwb-<VERSION>.
-  CWBNUKEOLD=1           # Delete previously downloaded CWB files before downloading and installing again? Not normally needed!
+  CWBNUKEOLD=0           # Delete previously downloaded CWB files before downloading and installing again? Not normally needed!
 
 # CQPWEB
 CQPWEBSW=0                  # Install CQPWEB SERVER.
@@ -169,7 +176,7 @@ IMAGEUPLD=0                  # Upload specified image to use as top left/right g
 FAVICONUPLD=0                # Upload favicon.ico to root of website?
   FAVICONSOURCE="YOUR_INFO_HERE" # Source URL of favicon.ico.
   FAVICONTARGET="/var/www/html/cqpweb/" # Destination directory of favicon.ico.
-CREATECQPWEBSCRIPTS=1        # Create a series of useful scripts in ~/bin.
+CREATECQPWEBSCRIPTS=0        # Create a series of useful scripts in ~/bin.
 CUSTPGSIGNUP=0               # Customize CQPweb signup page. Users will definitely want to customize this customization.
 CUSTPGMENUGRAPHIC=0          # Replaces the word "Menu" in the T/L cell of most pages with a graphic ('IMAGESOURCE2', above) and optional URL.
   MENUURLUSER="YOUR_INFO_HERE"  # URL to assign to T/L graphic on user home pages.
@@ -654,6 +661,7 @@ if [[ "$UPGRADEOS" = 1 ]]; then
 
     # UPDATE AND UPGRADE SOFTWARE
     sudo apt update -y
+    sudo apt autoremove -y
     sudo apt upgrade -y
 
     # INSTALL SOFTWARE THAT IS REQUIRED FOR EARLY OPERATIONS.
@@ -1039,6 +1047,8 @@ if [[ "$SSHGENNEWKEYS" = 1 ]]; then
 
     # UPDATE SOFTWARE
     sudo apt update -y
+    sudo apt autoremove -y
+    sudo apt upgrade -y
     sudo apt install -y --install-recommends figlet openssh-sftp-server ssh-askpass sshfs lolcat toilet toilet-fonts
 
     # INSTALL ON EVERYTHING BUT DEBIAN. THERE SEEM TO BE NO DEBIAN EQUIVALENTS AVAILABLE IN 9.9.0 REPOS
@@ -1118,6 +1128,7 @@ if [[ "$SSHPWDSW" = 1 ]]; then
 
         # UPDATE AND INSTALL SOFTWARE
         sudo apt update -y
+        sudo apt autoremove -y
         sudo apt upgrade -y
         sudo apt install -y --install-recommends figlet openssh-sftp-server ssh-askpass sshfs lolcat toilet toilet-fonts
 
@@ -1269,9 +1280,8 @@ fi
 if [[ "$SSHKEYSW" = 1 ]]; then
 
     sudo apt update -y
-
+    sudo apt autoremove -y
     sudo apt upgrade -y
-
     sudo apt install -y --install-recommends figlet iftop landscape-common lolcat mytop toilet
 
     echo ""
@@ -1348,6 +1358,7 @@ if [[ "$NECESSARYSW" = 1 ]]; then
 
     # UPDATE AND INSTALL SOFTWARE
     sudo apt update -y
+    sudo apt autoremove -y
     sudo apt upgrade -y
     sudo apt install -y --install-recommends aria2 autoconf automake build-essential curl dos2unix gcc git locales-all make members mercurial openssh-server openssl pkg-config recode subversion unicode wget
 
@@ -1375,6 +1386,7 @@ if [[ "$USEFULSW" = 1 ]]; then
     echo "${CLBL}${BLD}==========> Installing USEFUL SOFTWARE...${RST}"
 
     sudo apt update -y
+    sudo apt autoremove -y
     sudo apt upgrade -y
     sudo apt install -y --install-recommends bzip2 exfat-fuse exfat-utils lbzip2 mc moreutils most neofetch p7zip p7zip-full pbzip2 python3-pip rename unzip w3m zip
 
@@ -1434,7 +1446,7 @@ if [[ "$SERVERSW" = 1 ]]; then
     else
         # ON EVERYTHING BUT DEBIAN
         sudo mkdir -p /tmp/rg               # MAKE TEMP DIR
-        sudo chmod -R ugo+rwx /tmp/rg       # CHANGE PERMISSIONS OF TEMP DIR
+        sudo chmod -R ugo=rwx /tmp/rg       # CHANGE PERMISSIONS OF TEMP DIR
         cd /tmp/rg || exit                  # MOVE INTO TEMP DIR
         # DOWNLOAD THE GITHUB "LATEST" PAGE, WHICH REDIRECTS TO A PAGE WITH THE LATEST VERSION NUMBER IN ITS URL, AND EXTRACT THAT LINE
         RGLATESTVER=$(aria2c https://github.com/BurntSushi/ripgrep/releases/latest | grep 'Redirecting to')
@@ -1451,7 +1463,7 @@ if [[ "$SERVERSW" = 1 ]]; then
     # INSTALL FD
     ####################
     sudo mkdir -p /tmp/fd               # MAKE TEMP DIR
-    sudo chmod -R ugo+rwx /tmp/fd       # CHANGE PERMISSIONS OF TEMP DIR
+    sudo chmod -R ugo=rwx /tmp/fd       # CHANGE PERMISSIONS OF TEMP DIR
     cd /tmp/fd || exit                  # MOVE INTO TEMP DIR
 
     # ASSEMBLE FILENAME
@@ -1529,8 +1541,9 @@ if [[ "$CWB" = 1 ]] && [[ "$CWBVER" = "latest" || "$CWBVER" = "stable" ]]; then
     echo ""
     echo "${CLBL}==========> Installing dependencies...${RST}"
     sudo apt update -y
+    sudo apt autoremove -y
     sudo apt upgrade -y
-    sudo apt install -y --install-recommends autoconf bison flex gcc make pkg-config libc6-dev libncurses5-dev libpcre3-dev libglib2.0-dev libreadline-dev subversion cpanminus
+    sudo apt install -y --install-recommends autoconf bison cpanminus flex gcc libc6-dev libglib2.0-dev libncurses5-dev libpcre3-dev libreadline-dev make pkg-config subversion
 
     # INSTALL REQUIRED PERL MODULES
     echo ""
@@ -1678,11 +1691,11 @@ if [[ "$CWB" = 1 ]] && [[ "$CWBVER" = "latest" || "$CWBVER" = "stable" ]]; then
         # LOAD .PROFILE SO NEW PATHS BECOME AVAILABLE IMMEDIATELY
         source "${HOME}/.profile"
 
-        # MAKE CWB REGISTRY AND DATA DIRECTORIES AND CHANGE OWNER AND PERMISSIONS
+        # MAKE CWB REGISTRY AND DATA DIRECTORIES AND CHANGE OWNER AND PERMISSIONS +++++
         sudo mkdir -p "${COMMONCQPWEBDIR}/data"
         sudo mkdir -p "${COMMONCQPWEBDIR}/registry"
-        sudo chgrp www-data ${COMMONCQPWEBDIR}/*
-        sudo chmod g+rwx,o-rwx,+s ${COMMONCQPWEBDIR}/*
+        sudo chown -R www-data:www-data ${COMMONCQPWEBDIR}/*
+        sudo chmod -R u=rwX,g=rwXs,o=rX ${COMMONCQPWEBDIR}/*
 
         #########################
         # COMPILE PERL MODULES
@@ -1760,7 +1773,7 @@ if [[ "$CQPWEBSW" = 1 ]]; then
     fi
 
     ####################
-    # REMOVE ANY CURRENT MYSQL AND INSTALL MYSQL 8 +++++
+    # REMOVE ANY CURRENT MYSQL AND INSTALL MYSQL 8
     ####################
     if [[ "${MYSQL8}" = 1 ]]; then
 
@@ -1769,9 +1782,9 @@ if [[ "$CQPWEBSW" = 1 ]]; then
 
         sudo apt purge -y mysql*
 
-        # DOWNLOAD NEW MYSQL VERSION
+        # DOWNLOAD NEW MYSQL VERSION +++++
         sudo mkdir -p /tmp/mysql8
-        sudo chmod ugo+rwx /tmp/mysql8
+        sudo chmod ugo=rwx /tmp/mysql8
         cd /tmp/mysql8 || exit
 
         # NOTE: THE MYSQL.COM DOWNLOAD SITE IS SUCH A MESS OF DYNAMIC MENUS, SUBMENUS, SELECTIONS
@@ -1783,9 +1796,8 @@ if [[ "$CQPWEBSW" = 1 ]]; then
         sudo dpkg -i mysql-apt-config_0.8.13-1_all.deb
 
         sudo apt update -y
-
+        sudo apt autoremove -y
         sudo apt upgrade -y --install-recommends
-
         sudo apt install -y --install-recommends mysql-server
 
     fi
@@ -1804,9 +1816,6 @@ if [[ "$CQPWEBSW" = 1 ]]; then
 
 
 
-
-
-
     ####################
     # USER AND GROUP MANAGEMENT &
     # FOLDER OWNERSHIP AND PERMISSIONS
@@ -1817,11 +1826,13 @@ if [[ "$CQPWEBSW" = 1 ]]; then
         sudo usermod -G www-data -a "${USER}"
     fi
 
-    # SET CERTAIN FOLDER PERMISSIONS AND GROUPS
-    sudo chmod -R g+rws /var/www             # Make new files in these dirs inherit the dir's group permissions
-    sudo chmod -R g+rws /usr/lib/cgi-bin     # Make new files in these dirs inherit the dir's group permissions
-    sudo chgrp -R www-data /var/www
-    sudo chgrp -R www-data /usr/lib/cgi-bin
+    # SET CERTAIN FOLDER PERMISSIONS AND GROUPS +++++
+    sudo chown -R www-data:www-data /var/www
+    sudo chown -R www-data:www-data /usr/lib/cgi-bin
+
+    sudo chmod -R u=rwX,g=rwXs,o=rX /var/www
+    sudo chmod -R u=rwX,g=rwXs,o=rX /usr/lib/cgi-bin
+
 
     ####################
     # CQPWEB
@@ -1844,24 +1855,29 @@ if [[ "$CQPWEBSW" = 1 ]]; then
         sudo mkdir -p cqpweb
         if [[ "$CQPCWBRELEASE" = 0 ]]; then
             # DOWNLOAD LATEST RELEASE
-            sudo svn checkout http://svn.code.sf.net/p/cwb/code/gui/cqpweb/trunk cqpweb
+            sudo svn checkout https://svn.code.sf.net/p/cwb/code/gui/cqpweb/branches/3.2-latest cqpweb
         else
             # DOWNLOAD SPECIFIC RELEASE
-            sudo svn checkout -r ${CQPCWBRELEASE} http://svn.code.sf.net/p/cwb/code/gui/cqpweb/trunk cqpweb
+            sudo svn checkout -r ${CQPCWBRELEASE} https://svn.code.sf.net/p/cwb/code/gui/cqpweb/branches/3.2-latest cqpweb
         fi
     fi
 
-    # CHANGE PERMISSIONS ON WEB SERVER DIRECTORY
-    sudo chgrp -R www-data /var/www/html/cqpweb
-    sudo chmod -R g+rwX /var/www/html/cqpweb
+    # CHANGE PERMISSIONS ON WEB SERVER DIRECTORY +++++
+    sudo chown -R www-data:www-data /var/www/html/cqpweb
+    sudo chmod -R u=rwX,g=rwXs,o=rX /var/www/html/cqpweb
 
-    # CREATE CQPWEB SUBDIRECTORIES AND SET GROUP AND PERMISSIONS
+#     sudo chmod -R ug=rws /var/www
+#     sudo chmod -R ug=rws /usr/lib/cgi-bin
+    sudo chmod -R u=rwX,g=rwXs,o=rX /var/www
+    sudo chmod -R u=rwX,g=rwXs,o=rX /usr/lib/cgi-bin
+
+    # CREATE CQPWEB SUBDIRECTORIES AND SET GROUP AND PERMISSIONS +++++
     sudo mkdir -p ${COMMONCQPWEBDIR}/{data,registry,cache,upload}
-    sudo chgrp www-data ${COMMONCQPWEBDIR}/*
-    sudo chmod g+rwx,o-rwx,+s ${COMMONCQPWEBDIR}/*
+    sudo chown www-data:www-data ${COMMONCQPWEBDIR}/*
+    sudo chmod -R u=rwX,g=rwXs,o=rX ${COMMONCQPWEBDIR}/*
 
     # MAKE UPLOAD DIRECTORY VERY PERMISSIVE
-    sudo chmod ugo+rwX,+s "${COMMONCQPWEBDIR}/upload"
+    sudo chmod ugo=rwX,+s "${COMMONCQPWEBDIR}/upload"
 
     ####################
     # PHP APACHE CONFIGURATION
@@ -2226,7 +2242,7 @@ EOF
 
     # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
     sudo chown "${USER}:${USER}" "${HOME}/bin/upd-cwb.sh"
-    sudo chmod ug+rwx "${HOME}/bin/upd-cwb.sh"
+    sudo chmod ug=rwx "${HOME}/bin/upd-cwb.sh"
 
 
     ####################
@@ -2271,7 +2287,7 @@ EOF
 
     # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
     sudo chown "${USER}:${USER}" "${HOME}/bin/upd-cwbdoc.sh"
-    sudo chmod ug+rwx "${HOME}/bin/upd-cwbdoc.sh"
+    sudo chmod ug=rwx "${HOME}/bin/upd-cwbdoc.sh"
 
 
     ####################
@@ -2348,7 +2364,7 @@ EOF
 
     # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
     sudo chown "${USER}:${USER}" "${HOME}/bin/upd-cwbperl.sh"
-    sudo chmod ug+rwx "${HOME}/bin/upd-cwbperl.sh"
+    sudo chmod ug=rwx "${HOME}/bin/upd-cwbperl.sh"
 
 
     ####################
@@ -2387,8 +2403,8 @@ EOF
 	fi
 
 	# CHANGE PERMISSIONS ON WEB SERVER DIRECTORY
-	sudo chgrp -R www-data /var/www/html/cqpweb
-	sudo chmod -R g+rwX /var/www/html/cqpweb
+	sudo chown -R www-data:www-data /var/www/html/cqpweb
+	sudo chmod -R u=rwX,g=rwXs,o=rX /var/www/html/cqpweb
 
 	# RESTART APACHE WEB SERVER
 	sudo systemctl reload apache2
@@ -2401,7 +2417,7 @@ EOF
 
     # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
     sudo chown "${USER}:${USER}" "${HOME}/bin/upd-cqpweb.sh"
-    sudo chmod ug+rwx "${HOME}/bin/upd-cqpweb.sh"
+    sudo chmod ug=rwx "${HOME}/bin/upd-cqpweb.sh"
 
 
     ####################
@@ -2437,7 +2453,7 @@ EOF
 
     # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
     sudo chown "${USER}:${USER}" "${HOME}/bin/upd-all.sh"
-    sudo chmod ug+rwx "${HOME}/bin/upd-all.sh"
+    sudo chmod ug=rwx "${HOME}/bin/upd-all.sh"
 
 
     ####################
@@ -2474,7 +2490,7 @@ EOF
 
     # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
     sudo chown "${USER}:${USER}" "${HOME}/bin/upd-database.sh"
-    sudo chmod ug+rwx "${HOME}/bin/upd-database.sh"
+    sudo chmod ug=rwx "${HOME}/bin/upd-database.sh"
 
 
 
@@ -2512,7 +2528,7 @@ EOF
 
     # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
     sudo chown "${USER}:${USER}" "${HOME}/bin/testmail-postfix.sh"
-    sudo chmod ug+rwx "${HOME}/bin/testmail-postfix.sh"
+    sudo chmod ug=rwx "${HOME}/bin/testmail-postfix.sh"
 
 
     ####################
@@ -2534,27 +2550,27 @@ EOF
 
 	echo ""
 	echo "${BLD}==========> CQPWEB <==========${RST}"
-	echo "CURRENT REVISION: \$(svn info --show-item revision /var/www/html/cqpweb)"
-	echo "LATEST REVISION:  \$(svn info -r HEAD /var/www/html/cqpweb | grep 'Revision:' | sed 's/Revision: //')"
-	echo "LAST MODIFIED:    \$(svn info -r HEAD /var/www/html/cqpweb | grep 'Last Changed Rev:' | sed 's/Last Changed Rev: //')"
+	echo "INSTALLED REVISION: \$(svn info --show-item revision /var/www/html/cqpweb)"
+	echo "LATEST REVISION:    \$(svn info -r HEAD /var/www/html/cqpweb | grep 'Revision:' | sed 's/Revision: //')"
+	echo "LAST MODIFIED:      \$(svn info -r HEAD /var/www/html/cqpweb | grep 'Last Changed Rev:' | sed 's/Last Changed Rev: //')"
 
 	echo ""
 	echo "${BLD}==========> CWB <==========${RST}"
-	echo "CURRENT REVISION: \$(svn info --show-item revision /home/\${USER}/software/cwb)"
-	echo "LATEST REVISION:  \$(svn info -r HEAD /home/\${USER}/software/cwb | grep 'Revision:' | sed 's/Revision: //')"
-	echo "LAST MODIFIED:    \$(svn info -r HEAD /home/\${USER}/software/cwb | grep 'Last Changed Rev:' | sed 's/Last Changed Rev: //')"
+	echo "INSTALLED REVISION: \$(svn info --show-item revision /home/\${USER}/software/cwb)"
+	echo "LATEST REVISION:    \$(svn info -r HEAD /home/\${USER}/software/cwb | grep 'Revision:' | sed 's/Revision: //')"
+	echo "LAST MODIFIED:      \$(svn info -r HEAD /home/\${USER}/software/cwb | grep 'Last Changed Rev:' | sed 's/Last Changed Rev: //')"
 
 	echo ""
 	echo "${BLD}==========> CWB-DOC <==========${RST}"
-	echo "CURRENT REVISION: \$(svn info --show-item revision /home/\${USER}/software/cwb-doc)"
-	echo "LATEST REVISION:  \$(svn info -r HEAD /home/\${USER}/software/cwb-doc | grep 'Revision:' | sed 's/Revision: //')"
-	echo "LAST MODIFIED:    \$(svn info -r HEAD /home/\${USER}/software/cwb-doc | grep 'Last Changed Rev:' | sed 's/Last Changed Rev: //')"
+	echo "INSTALLED REVISION: \$(svn info --show-item revision /home/\${USER}/software/cwb-doc)"
+	echo "LATEST REVISION:    \$(svn info -r HEAD /home/\${USER}/software/cwb-doc | grep 'Revision:' | sed 's/Revision: //')"
+	echo "LAST MODIFIED:      \$(svn info -r HEAD /home/\${USER}/software/cwb-doc | grep 'Last Changed Rev:' | sed 's/Last Changed Rev: //')"
 
 	echo ""
 	echo "${BLD}==========> CWB-PERL <==========${RST}"
-	echo "CURRENT REVISION: \$(svn info --show-item revision /home/\${USER}/software/cwb-perl)"
-	echo "LATEST REVISION:  \$(svn info -r HEAD /home/\${USER}/software/cwb-perl | grep 'Revision:' | sed 's/Revision: //')"
-	echo "LAST MODIFIED:    \$(svn info -r HEAD /home/\${USER}/software/cwb-perl | grep 'Last Changed Rev:' | sed 's/Last Changed Rev: //')"
+	echo "INSTALLED REVISION: \$(svn info --show-item revision /home/\${USER}/software/cwb-perl)"
+	echo "LATEST REVISION:    \$(svn info -r HEAD /home/\${USER}/software/cwb-perl | grep 'Revision:' | sed 's/Revision: //')"
+	echo "LAST MODIFIED:      \$(svn info -r HEAD /home/\${USER}/software/cwb-perl | grep 'Last Changed Rev:' | sed 's/Last Changed Rev: //')"
 
 	echo ""
 	echo "${CGRN}${BLD}==========> CQPWEB AND CWB VERSION REPORT DONE${RST}"
@@ -2564,7 +2580,7 @@ EOF
 
     # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
     sudo chown "${USER}:${USER}" "${HOME}/bin/version-report.sh"
-    sudo chmod ug+rwx "${HOME}/bin/version-report.sh"
+    sudo chmod ug=rwx "${HOME}/bin/version-report.sh"
 
 
     ####################
@@ -2596,7 +2612,7 @@ EOF
 
     # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
     sudo chown "${USER}:${USER}" "${HOME}/bin/calculate-sttr.sh"
-    sudo chmod ug+rwx "${HOME}/bin/calculate-sttr.sh"
+    sudo chmod ug=rwx "${HOME}/bin/calculate-sttr.sh"
 
 
     ####################
@@ -2639,7 +2655,7 @@ EOF
 
     # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
     sudo chown "${USER}:${USER}" "${HOME}/bin/calculate-frequencies-offline.sh"
-    sudo chmod ug+rwx "${HOME}/bin/calculate-frequencies-offline.sh"
+    sudo chmod ug=rwx "${HOME}/bin/calculate-frequencies-offline.sh"
 
 
     ####################
@@ -2687,7 +2703,7 @@ EOF
 
     # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
     sudo chown "${USER}:${USER}" "${HOME}/bin/bymon.sh"
-    sudo chmod ug+rwx "${HOME}/bin/bymon.sh"
+    sudo chmod ug=rwx "${HOME}/bin/bymon.sh"
 
     echo "${CGRN}${BLD}==========> CQPWEB SCRIPTS installation finished.${RST}"
     echo "${CWHT}${BLD}            You will find useful scripts in ${CORG}${HOME}/bin${CWHT}.${RST}"
@@ -3017,7 +3033,7 @@ fi
 
 
 ########################################
-# TURN CQPWEB DEBUG ON OR OFF +++++
+# TURN CQPWEB DEBUG ON OR OFF
 ########################################
 if [[ "${TURNDEBUGON}" = 1 ]]; then
     echo ""
@@ -3048,16 +3064,19 @@ if [[ "$CORPDICKENS" = 1 ]]; then
     echo ""
     echo "${CLBL}${BLD}==========> Installing DICKENS CORPUS...${RST}"
 
-    # CREATE DATA AND REGISTRY DIRECTORIES, SET GROUP AND PERMISSIONS, AND COPY FILES TO THEM
+    # CREATE DATA AND REGISTRY DIRECTORIES, COPY FILES TO THEM, SET OWNERSHIP + PERMISSIONS
     # NOTE use of 'cp -a' plus "." after the path -- 'cp -r' does NOT copy hidden files!
     sudo mkdir -p "${COMMONCQPWEBDIR}/data/Dickens"
     sudo mkdir -p "${COMMONCQPWEBDIR}/registry"
 
-    sudo chgrp www-data ${COMMONCQPWEBDIR}/*
-    sudo chmod g+rwx,o-rwx,+s ${COMMONCQPWEBDIR}/*
-
     sudo cp -a "${SWDIR}/cwb-doc/corpora/dickens/release/Dickens-1.0/data/." "${COMMONCQPWEBDIR}/data/Dickens/"
     sudo cp "${SWDIR}/cwb-doc/corpora/dickens/release/Dickens-1.0/registry/dickens" "${COMMONCQPWEBDIR}/registry/dickens"
+
+    sudo chown -R www-data:www-data ${COMMONCQPWEBDIR}/*
+    sudo chmod -R u=rwX,g=rwXs,o=rX ${COMMONCQPWEBDIR}/*
+
+#     sudo chgrp www-data ${COMMONCQPWEBDIR}/*
+#     sudo chmod g+rwx,o-rwx,+s ${COMMONCQPWEBDIR}/*
 
     # CHANGE CONTENTS OF REGISTRY FILE TO POINT TO ACTUAL DATA AND REGISTRY LOCATIONS
     configLine "^HOME.*" "HOME ${COMMONCQPWEBDIR}/data/Dickens"       ${COMMONCQPWEBDIR}/registry/dickens
@@ -3088,6 +3107,7 @@ if [[ "$MAILSW" = 1 ]]; then
 
         # UPDATE SYSTEM SOFTWARE
         sudo apt update -y
+        sudo apt autoremove -y
         sudo apt upgrade -y
 
         # REMOVE EVERY LAST VESTIGE OF SENDMAIL
@@ -3267,6 +3287,7 @@ if [[ "$SECURITYSW" = 1 ]]; then
 
     # UPDATE AND INSTALL SOFTWARE
     sudo apt update -y
+    sudo apt autoremove -y
     sudo apt upgrade -y
     sudo apt install -y --install-recommends chkrootkit logwatch lynis
 
@@ -3365,6 +3386,7 @@ if [[ "$UFWSW" = 1 ]]; then
 
     # Install and update software
     sudo apt update -y
+    sudo apt autoremove -y
     sudo apt upgrade -y
     sudo apt install -y --install-recommends ufw
 
@@ -3423,6 +3445,7 @@ if [[ "$UPSSW" = 1 ]]; then
     echo "${CLBL}${BLD}==========> Installing UPS SOFTWARE...${RST}"
 
     sudo apt update -y
+    sudo apt autoremove -y
     sudo apt upgrade -y
     sudo apt install -y --install-recommends apcupsd
 
@@ -3462,6 +3485,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 
         # Install the software
         sudo apt update -y
+        sudo apt autoremove -y
         sudo apt install -y --install-recommends fail2ban iptables-persistent logcheck
 
         # Delete any pre-existing local config file and create a new one
@@ -3603,9 +3627,8 @@ if [[ "$FREELINGSW" = 1 ]]; then
 
     # INSTALL REQUIRED DISTRO PACKAGES
     sudo apt update -y
-
+    sudo apt autoremove -y
     sudo apt upgrade -y
-
     sudo apt install -y --install-recommends icu-devtools libicu-dev libboost-regex-dev libboost-system-dev libboost-thread-dev libboost-program-options-dev libboost-locale-dev zlib1g-dev build-essential automake autoconf libtool git cmake libboost-filesystem-dev libboost-iostreams-dev
 
     # DEFINE INSTALL DIRECTORY
@@ -3773,6 +3796,7 @@ if [[ "$VISIDATASW" = 1 ]]; then
 
     # INSTALL DISTRO DEPENDENCIES
     sudo apt update -y
+    sudo apt autoremove -y
     sudo apt upgrade -y
     sudo apt install -y --install-recommends libpq-dev
 
@@ -3835,6 +3859,7 @@ if [[ "$RSTUDIOSW" = 1 ]]; then
 
         # INSTALL RSTUDIO
         sudo apt update -y
+        sudo apt autoremove -y
         sudo apt upgrade -y
         sudo apt install -y --install-recommends "/tmp/${FILE}"
 
@@ -3892,6 +3917,7 @@ if [[ "$RLINGPKGSW" = 1 ]]; then
 
     # UPDATE AND UPGRADE SOFTWARE
     sudo apt update -y
+    sudo apt autoremove -y
     sudo apt upgrade -y
 
     # INSTALL DISTRO SOFTWARE DEPENDENCIES (PART 1 OF 2)
@@ -3940,6 +3966,7 @@ if [[ "$NLPSW" = 1 ]]; then
 
     # UPDATE DISTRO SOFTWARE
     sudo apt update -y
+    sudo apt autoremove -y
     sudo apt upgrade -y
 
     # INSTALL DISTRO SOFTWARE
@@ -4035,6 +4062,7 @@ if [[ "$UCSTOOLKITSW" = 1 ]]; then
 
     # UPDATE DISTRO SOFTWARE
     sudo apt update -y
+    sudo apt autoremove -y
     sudo apt upgrade -y
 
     # INSTALL DISTRO DEPENDENCIES
