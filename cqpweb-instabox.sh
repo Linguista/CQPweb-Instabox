@@ -3,8 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-07-10
-# VERSION:  76
+# DATE:     2019-10-22
+# VERSION:  79
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes an install of certain versions of Ubuntu or Debian and sets up Open
@@ -25,6 +25,18 @@ SCRIPTNAME="cqpweb-instabox.sh"
 
 # CHANGE LOG:
 
+# v79
+# - Very minor fixes.
+#
+# v78
+# - INTERNAL: Changed URL for my personal corpora.
+# - Added timezone info to  e-mail testing scripts.
+#
+# v77
+# - Fixed permission issue with /css and /css/img directories.
+# - Now creates a script in ~/bin to test the CQPweb/PHP mail server.
+# - Midnight commander (mc) is now installed as part of Necessary Software.
+#
 # v76
 # - Changed SourceForce URL to point to the new branch
 # - Added autoremove to most package installation commands.
@@ -108,7 +120,8 @@ SCRIPTNAME="cqpweb-instabox.sh"
 # - Pre-release development.
 
 # TODO:
-# - PHP can now send e-mails. But fail2ban and other system utils can't. This needs fixed.
+# - PHP can now send e-mails if the mail server is set up using this script. But
+#   fail2ban and other system utils can't. This needs fixed.
 # - Configure server to use HTTPS and get SSL certificate automatically from somewhere.
 
 
@@ -172,11 +185,11 @@ IMAGEUPLD=0                  # Upload specified image to use as top left/right g
   IMAGESOURCE1FILE="YOUR_INFO_HERE" # URL of top left/right logo image source file.
   IMAGESOURCE2DIR="YOUR_INFO_HERE"  # URL of an additional image source file PATH. No trailing slash!
   IMAGESOURCE2FILE="YOUR_INFO_HERE" # URL of an additional image source file.
-  IMAGETARGET="/var/www/html/cqpweb/css/img/"            # Destination path of top left/right logo image file.
+  IMAGETARGET="/var/www/html/cqpweb/css/img"            # Destination path of top left/right logo image file.
 FAVICONUPLD=0                # Upload favicon.ico to root of website?
   FAVICONSOURCE="YOUR_INFO_HERE" # Source URL of favicon.ico.
   FAVICONTARGET="/var/www/html/cqpweb/" # Destination directory of favicon.ico.
-CREATECQPWEBSCRIPTS=0        # Create a series of useful scripts in ~/bin.
+CREATECQPWEBSCRIPTS=1        # Create a series of useful scripts in ~/bin.
 CUSTPGSIGNUP=0               # Customize CQPweb signup page. Users will definitely want to customize this customization.
 CUSTPGMENUGRAPHIC=0          # Replaces the word "Menu" in the T/L cell of most pages with a graphic ('IMAGESOURCE2', above) and optional URL.
   MENUURLUSER="YOUR_INFO_HERE"  # URL to assign to T/L graphic on user home pages.
@@ -191,7 +204,7 @@ CUSTOMIZEFONTS=0             # Modify CSS files in order to use a user-specified
                              # [SANS]: Arimo, Fira Sans, Lato, Noto Sans, Open Sans, PT Sans, Raleway, Roboto, Roboto Condensed
                              # [MONO-SMALL]: Inconsolata, Ubuntu Mono
                              # [MONO-MID]: Oxygen Mono, Space Mono, Overpass Mono, Fira Mono, IBM Plex Mono, Source Code Pro
-                             # [MONO-UGLY]: Anonymous Pro, B612 Mono, Cousine, PT Mono
+                             # [MONO-UGLY]test Anonymous Pro, B612 Mono, Cousine, PT Mono
 TURNDEBUGON=0                # Set CQPweb to print debug messages.
 
 # CORPORA
@@ -1216,6 +1229,10 @@ if [[ "$SSHPWDSW" = 1 ]]; then
 
         # ADD MESSAGE TO /ETC/PROFILE
         sudo tee -a /etc/profile <<- EOF >/dev/null 2>&1
+		# FOR SOME REASON, AT LEAST ON UBUNTU SERVER 18.04.3, LOCALE MUST BE NOW BE SET
+		# HERE IN ORDER TO PREVENT ERRORS WITH LOLCAT AND OTHER, MORE IMPORTANT SOFTWARE.
+		export LC_ALL="en_US.UTF-8"
+		#
 		# LOGIN MESSAGE added by ${SCRIPTNAME} on ${DATE}
 		BOLDWHITE='\033[1;36m'
 		NC='\033[0m'
@@ -1360,7 +1377,7 @@ if [[ "$NECESSARYSW" = 1 ]]; then
     sudo apt update -y
     sudo apt autoremove -y
     sudo apt upgrade -y
-    sudo apt install -y --install-recommends aria2 autoconf automake build-essential curl dos2unix gcc git locales-all make members mercurial openssh-server openssl pkg-config recode subversion unicode wget
+    sudo apt install -y --install-recommends aria2 autoconf automake build-essential curl dos2unix gcc git locales-all make mc members mercurial openssh-server openssl pkg-config recode subversion unicode wget
 
     # INSTALL ON DEBIAN ONLY
     if [[ "$OS" = "Debian" ]]; then
@@ -1691,7 +1708,7 @@ if [[ "$CWB" = 1 ]] && [[ "$CWBVER" = "latest" || "$CWBVER" = "stable" ]]; then
         # LOAD .PROFILE SO NEW PATHS BECOME AVAILABLE IMMEDIATELY
         source "${HOME}/.profile"
 
-        # MAKE CWB REGISTRY AND DATA DIRECTORIES AND CHANGE OWNER AND PERMISSIONS +++++
+        # MAKE CWB REGISTRY AND DATA DIRECTORIES AND CHANGE OWNER AND PERMISSIONS
         sudo mkdir -p "${COMMONCQPWEBDIR}/data"
         sudo mkdir -p "${COMMONCQPWEBDIR}/registry"
         sudo chown -R www-data:www-data ${COMMONCQPWEBDIR}/*
@@ -1828,10 +1845,16 @@ if [[ "$CQPWEBSW" = 1 ]]; then
 
     # SET CERTAIN FOLDER PERMISSIONS AND GROUPS +++++
     sudo chown -R www-data:www-data /var/www
-    sudo chown -R www-data:www-data /usr/lib/cgi-bin
-
     sudo chmod -R u=rwX,g=rwXs,o=rX /var/www
+
+    sudo chown -R www-data:www-data /usr/lib/cgi-bin
     sudo chmod -R u=rwX,g=rwXs,o=rX /usr/lib/cgi-bin
+
+    sudo chown -R www-data:www-data /var/www/html/cqpweb/css
+    sudo chmod -R u=rwX,g=rwXs,o=rX /var/www/html/cqpweb/css
+
+    sudo chown -R www-data:www-data /var/www/html/cqpweb/css/img
+    sudo chmod -R u=rwX,g=rwXs,o=rX /var/www/html/cqpweb/css/img
 
 
     ####################
@@ -2510,6 +2533,7 @@ EOF
 
 	DATE="\$(date +'%Y/%m/%d')"
 	TIME="\$(date +'%H:%M:%S')"
+	TZ="\$(cat /etc/timezone)"
 	USER="\$(whoami)"
 	LOCALHOSTNAME="\$(hostname)"
 	INTERNALIP="\$(ip route get 1.2.3.4 | awk '{print \$7}')"
@@ -2518,10 +2542,10 @@ EOF
 	echo ""
 	echo "${CLBL}${BLD}==========> SENDING TEST E-MAIL VIA POSTFIX...${RST}"
 
-	echo -e "Hi!\\n\\nThis is the Postfix send-only mail server on \${LOCALHOSTNAME} (\${INTERNALIP} / \${EXTERNALIP}). I'm sending this test e-mail to ${PERSONALMAILADDR} via ${OUTMAILSERVER}:${SMTPPORT}.\\n\\nIt's currently \${TIME} on \${DATE}.\\n\\nHave a nice day!" | mail -s "Test mail from Postfix on \$LOCALHOSTNAME" -a "From: ${ADMINMAILADDR}" "${PERSONALMAILADDR}"
+	echo -e "Hi!\\n\\nThis is the Postfix send-only mail server on \${LOCALHOSTNAME} (\${INTERNALIP} / \${EXTERNALIP}). I'm sending this test e-mail to ${PERSONALMAILADDR} via ${OUTMAILSERVER}:${SMTPPORT}.\\n\\nIt's currently \${TIME} on \${DATE} (\$TZ).\\n\\nHave a nice day!" | mail -s "Test mail from Postfix on \$LOCALHOSTNAME" -a "From: ${ADMINMAILADDR}" "${PERSONALMAILADDR}"
 
 	echo "${CGRN}${BLD}==========> Test e-mail sent via Postfix.${RST}"
-	echo "${CWHT}${BLD}If you don't receive it, look at run ${CORG}sudo tail -f /var/log/mail.log${CWHT}.${RST}"
+	echo "${CWHT}${BLD}If you don't receive it, run ${CORG}sudo tail -f /var/log/mail.log${CWHT} and read its output.${RST}"
 	echo ""
 
 EOF
@@ -2529,6 +2553,48 @@ EOF
     # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
     sudo chown "${USER}:${USER}" "${HOME}/bin/testmail-postfix.sh"
     sudo chmod ug=rwx "${HOME}/bin/testmail-postfix.sh"
+
+
+
+    ####################
+    # CREATE SCRIPT TO SEND TEST MAIL FROM CQPWEB VIA PHP
+    ####################
+
+    # DELETE ANY OLD VERSION OF THE SCRIPT
+    sudo rm -f "${HOME}/bin/testmail-cqpweb.sh"
+
+    # WRITE SCRIPT TO NEW FILE
+    sudo tee "${HOME}/bin/testmail-cqpweb.sh" <<- EOF >/dev/null 2>&1
+	#!/bin/bash
+
+	# SEND TEST E-MAIL VIA POSTFIX
+	# This script was created automatically by ${SCRIPTNAME} on ${DATE}.
+
+	DATE="\$(date +'%Y/%m/%d')"
+	TIME="\$(date +'%H:%M:%S')"
+	TZ="\$(cat /etc/timezone)"
+	USER="\$(whoami)"
+	LOCALHOSTNAME="\$(hostname)"
+	INTERNALIP="\$(ip route get 1.2.3.4 | awk '{print \$7}')"
+	EXTERNALIP="\$(wget -qO - http://checkip.amazonaws.com)"
+
+	echo ""
+	echo "${CLBL}${BLD}==========> SENDING TEST E-MAIL VIA CQPweb/PHP...${RST}"
+
+	echo -e "Hi!\\n\\nThis is the CQPweb/PHP send-only mail server on \${LOCALHOSTNAME} (\${INTERNALIP} / \${EXTERNALIP}). I'm sending this test e-mail to ${PERSONALMAILADDR} via ${OUTMAILSERVER}:${SMTPPORT}.\\n\\nIt's currently \${TIME} on \${DATE} (\$TZ).\\n\\nHave a nice day!" | mail -s "Test mail from CQPweb/PHP on \$LOCALHOSTNAME" -a "From: ${ADMINMAILADDR}" "${PERSONALMAILADDR}"
+
+	echo "${CGRN}${BLD}==========> Test e-mail sent via CQPweb/PHP.${RST}"
+	echo "${CWHT}${BLD}If you don't receive it, run ${CORG}sudo tail -f /var/log/mail.log${CWHT} and read its output.${RST}"
+	echo ""
+
+EOF
+
+    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
+    sudo chown "${USER}:${USER}" "${HOME}/bin/testmail-cqpweb.sh"
+    sudo chmod ug=rwx "${HOME}/bin/testmail-cqpweb.sh"
+
+
+
 
 
     ####################
@@ -2705,6 +2771,15 @@ EOF
     sudo chown "${USER}:${USER}" "${HOME}/bin/bymon.sh"
     sudo chmod ug=rwx "${HOME}/bin/bymon.sh"
 
+
+    ########################################
+    # SET OWNER OF ALL SCRIPTS IN ~/bin
+    #   THIS SHOULDN'T BE NECESSARY, BUT ON CERTAIN VPS-PRECONFIGURED UBUNTU
+    #   OS IMAGES (AT LEAST) THE CODE ABOVE DOESN'T DO IT FOR MOST SCRIPTS.
+    ########################################
+    sudo chown "${USER}:${USER}" "${HOME}"/bin/*.sh
+
+
     echo "${CGRN}${BLD}==========> CQPWEB SCRIPTS installation finished.${RST}"
     echo "${CWHT}${BLD}            You will find useful scripts in ${CORG}${HOME}/bin${CWHT}.${RST}"
     echo ""
@@ -2727,6 +2802,10 @@ if [[ "${IMAGEUPLD}" = 1 ]]; then
 
     # MAKE SURE IMAGE TARGET DIRECTORY IS NOT INVALID
     if [[ "${IMAGETARGET}" != "YOUR_INFO_HERE" ]] || [[ "${IMAGETARGET}" != "" ]]; then
+
+        # FIX OWNERSHIP AND PERMISSIONS
+        sudo chown -R www-data:www-data "${IMAGETARGET}"
+        sudo chmod -R ug=rwX,o=rX "${IMAGETARGET}"
 
         # IMAGE 1
         if [[ "${IMAGESOURCE1FILE}" != "YOUR_INFO_HERE" ]] && [[ "${IMAGESOURCE1FILE}" != "" ]]; then
