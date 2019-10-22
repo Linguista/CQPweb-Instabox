@@ -24,4 +24,4 @@ Note that the two server options, and possibly the `default` option (depending o
 Also note that while most installation options only take a few minutes, the `vmdeluxe` option can take several hours due to the fact that it downloads and complies a great many R packages.
 
 # Known issues
-While the Postfix mail agent that the `server` and `serverdeluxe` options install works just fine (try it with the `testmail-postfix.sh` script located in `~/bin`!), the PHP mail module that CQPweb uses does not work.
+While the Postfix mail agent that the `server` and `serverdeluxe` options install works just fine (try it with the `testmail-postfix.sh` script located in `~/bin`!), the PHP mail module that CQPweb uses does not work if you install Postfix this way. So most users will *not* want to install this.
