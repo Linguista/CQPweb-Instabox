@@ -3,8 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-10-22
-# VERSION:  79
+# DATE:     2019-10-23
+# VERSION:  80
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes an install of certain versions of Ubuntu or Debian and sets up Open
@@ -25,12 +25,18 @@ SCRIPTNAME="cqpweb-instabox.sh"
 
 # CHANGE LOG:
 
+# v80
+# - Added URL for CQPweb changelog to version-reporting script.
+# - Set all log-monitoring aliases to display the last 25 lines.
+# - Lengthened fail2ban bantimes and findtimes.
+# - Added installation of `debsums`, `apt-show-versions` packages.
+#
 # v79
 # - Very minor fixes.
 #
 # v78
 # - INTERNAL: Changed URL for my personal corpora.
-# - Added timezone info to  e-mail testing scripts.
+# - Added timezone info to test e-mail scripts.
 #
 # v77
 # - Fixed permission issue with /css and /css/img directories.
@@ -120,10 +126,14 @@ SCRIPTNAME="cqpweb-instabox.sh"
 # - Pre-release development.
 
 # TODO:
-# - PHP can now send e-mails if the mail server is set up using this script. But
-#   fail2ban and other system utils can't. This needs fixed.
+# - PHP can now send e-mails. But fail2ban and other system utils can't. This needs fixed.
 # - Configure server to use HTTPS and get SSL certificate automatically from somewhere.
 
+# NOTE:
+# - To get the mail server working, the following may be necessary:
+#   · Replace the entry in /etc/hosts with the following:
+#     127.0.0.1       localhost.localdomain localhost other_hostname fully_qualified-domain_name.com
+#   · Uninstall postfix, and install sendmail and mailutils.
 
 ################################################################################
 # SCRIPT CONFIGURATION
@@ -678,7 +688,7 @@ if [[ "$UPGRADEOS" = 1 ]]; then
     sudo apt upgrade -y
 
     # INSTALL SOFTWARE THAT IS REQUIRED FOR EARLY OPERATIONS.
-    sudo apt install -y --install-recommends gnupg software-properties-common apt-transport-https dirmngr rng-tools
+    sudo apt install -y --install-recommends apt-show-versions debsums gnupg software-properties-common apt-transport-https dirmngr rng-tools
 
     # FIX RNGTOOLS MISCONFIGURATION ON DEBIAN
     if [[ "$OS" = "Debian" ]]; then
@@ -856,11 +866,11 @@ if [[ "$CONFIGBASH" = 1 ]]; then
 	alias apelog='tail -f -n 25 /var/log/apache2/error.log'
 	alias flog='tail -f -n 25 /var/log/fail2ban.log'
 	alias klog='tail -f -n 25 /var/log/kern.log'
-	alias mlog='tail -f /var/log/mail.log'
-	alias mylog='tail -f /var/log/mysql/error.log'
+	alias mlog='tail -f -n 25 /var/log/mail.log'
+	alias mylog='tail -f -n 25 /var/log/mysql/error.log'
 	alias slog='tail -f -n 25 /var/log/syslog'
-	alias ulog='tail -f -n 15 /var/log/ufw.log'
-	alias upslog='tail -f -n 15 /var/log/apcupsd.events'
+	alias ulog='tail -f -n 25 /var/log/ufw.log'
+	alias upslog='tail -f -n 25 /var/log/apcupsd.events'
 
 	# LINGUISTIC THINGS
 	alias cqp='cqp -eC'
@@ -2639,6 +2649,8 @@ EOF
 	echo "LAST MODIFIED:      \$(svn info -r HEAD /home/\${USER}/software/cwb-perl | grep 'Last Changed Rev:' | sed 's/Last Changed Rev: //')"
 
 	echo ""
+	echo "You can see the CQPweb changelog at <https://sourceforge.net/p/cwb/activity/>."
+	echo ""
 	echo "${CGRN}${BLD}==========> CQPWEB AND CWB VERSION REPORT DONE${RST}"
 	echo ""
 
@@ -3574,9 +3586,11 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
         # Create config file
         sudo tee -a /etc/fail2ban/jail.local <<- EOF >/dev/null 2>&1
 		[default]
-		bantime = 30m
-		findtime = 30m
-		banaction = iptables-allports
+		bantime = 86400
+		findtime = 3600
+		maxretry = 3
+		banaction = iptables-multiport
+		banaction_allports = iptables-allports
 		backend = auto ; pyinotify, gamin, polling, systemd, auto
 		destemail = ${PERSONALMAILADDR}
 		sender = ${ADMINMAILADDR}
@@ -3584,7 +3598,6 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		mta = sendmail
 		action = %(action_mwl)s
 		ignoreip = ${WHITELISTEDIPS}
-		maxretry = 3
 
 		[ssh]
 		enabled = true
@@ -3676,7 +3689,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 
 EOF
 
-        # (RE)START FAIL2BAN AND RELOAD CONFIG (ODDLY, IT'S NECESSARY)
+        # (RE)START FAIL2BAN AND RELOAD CONFIG
         sudo fail2ban-client reload
         sudo systemctl restart fail2ban
 
