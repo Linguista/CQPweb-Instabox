@@ -3,8 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-10-23
-# VERSION:  80
+# DATE:     2019-11-01
+# VERSION:  81
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes an install of certain versions of Ubuntu or Debian and sets up Open
@@ -24,11 +24,22 @@ SCRIPTNAME="cqpweb-instabox.sh"
 
 
 # CHANGE LOG:
-
+#
+# v81
+# - Added installation and configuration of the mod_security and mod_evasive Apache modules (server install).
+# - Added installation and configuration of the OWASP mod_security core rule set.
+# - Added option to completely disable ipv6 support in host OS. This is set with `DISABLEIPV6=1`.
+# - Overhauled the entire installation and configuration of fail2ban to take into account changes
+#   that have appeared over time. More suggested software for it is also installed now.
+# - Removed a few settings in sysctl.conf that have been deprecated.
+# - Hardened several SSH configuration options.
+# - Added installation of `sysstat` to server install.
+# - Fixed three harmless but annoying errors in php.ini (loading gd2 and mysqli extensions improperly).
+#
 # v80
 # - Added URL for CQPweb changelog to version-reporting script.
 # - Set all log-monitoring aliases to display the last 25 lines.
-# - Lengthened fail2ban bantimes and findtimes.
+# - Lengthened fail2ban bantime and findtime.
 # - Added installation of `debsums`, `apt-show-versions` packages.
 #
 # v79
@@ -199,7 +210,7 @@ IMAGEUPLD=0                  # Upload specified image to use as top left/right g
 FAVICONUPLD=0                # Upload favicon.ico to root of website?
   FAVICONSOURCE="YOUR_INFO_HERE" # Source URL of favicon.ico.
   FAVICONTARGET="/var/www/html/cqpweb/" # Destination directory of favicon.ico.
-CREATECQPWEBSCRIPTS=1        # Create a series of useful scripts in ~/bin.
+CREATECQPWEBSCRIPTS=0        # Create a series of useful scripts in ~/bin.
 CUSTPGSIGNUP=0               # Customize CQPweb signup page. Users will definitely want to customize this customization.
 CUSTPGMENUGRAPHIC=0          # Replaces the word "Menu" in the T/L cell of most pages with a graphic ('IMAGESOURCE2', above) and optional URL.
   MENUURLUSER="YOUR_INFO_HERE"  # URL to assign to T/L graphic on user home pages.
@@ -220,20 +231,22 @@ TURNDEBUGON=0                # Set CQPweb to print debug messages.
 # CORPORA
 CORPDICKENS=0       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
 
-# ADDITIONAL SYSTEM SOFTWARE
+# ADDITIONAL SYSTEM SOFTWARE AND SYSTEM OPTIONS
     MAILSW=0        # Install and configure the Postfix mail server.
-SECURITYSW=0        # Install security software. Highly recommended for server install.
+SECURITYSW=0        # Install general security software. Highly recommended for server install.
      UFWSW=0        # Install and configure Universal FireWall (UFW). Important for security!
      UPSSW=0        # Install and configure software for APC BackUPS Pro 900 UPS (051d:0002)
 FAIL2BANSW=0        # Install and configure fail2ban. Important for security! But install this last, after you've confirmed everything works.
 WHITELISTEDIPS="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16" # IP addresses to whitelist (never ban) in fail2ban. Separate with space.
+APACHESECSW=0       # Install the Apache mod_security and mod_evasive security modules.
+DISABLEIPV6=0       # Completely disable ipv6 support in the host OS.
 
 # ADDITIONAL LINGUISTIC SOFTWARE: HEADLESS SERVER OR GUI
-     FREELINGSW=0           # Install FreeLing tagger.
-       FREELINGESCLMODS=0   # Modify FreeLing's Chilean Spanish install.
-       FREELINGNUKEOLD=0    # Delete all downloaded FreeLing files before installing again.
-PRAATHEADLESSSW=0           # Install headless Praat phonetic analysis software.
-     VISIDATASW=0           # Install Visidata, an amazing TUI tool to manipulate and process CSV files.
+FREELINGSW=0             # Install FreeLing tagger.
+    FREELINGESCLMODS=0   # Modify FreeLing's Chilean Spanish install.
+    FREELINGNUKEOLD=0    # Delete all downloaded FreeLing files before installing again.
+PRAATHEADLESSSW=0        # Install headless Praat phonetic analysis software.
+     VISIDATASW=0        # Install Visidata, an amazing TUI tool to manipulate and process CSV files.
 
 # ADDITIONAL LINGUISTIC SOFTWARE: OS WITH GUI ONLY
    RSTUDIOSW=0      # Install RStudio.
@@ -254,8 +267,6 @@ UCSTOOLKITSW=0      # UCS Toolkit collocations software.
   SERVERALIAS="YOUR_INFO_HERE"    # CQPWEB SERVER'S SHORT DOMAIN NAME (e.g. 'mydomain.com')
 ADMINMAILADDR="YOUR_INFO_HERE"    # ADMINISTRATOR'S E-MAIL ADDRESS.
 OUTMAILSERVER="YOUR_INFO_HERE"    # OUTGOING MAIL SERVER URL
-OUTMAILSERVER="YOUR_INFO_HERE"    # OUTGOING MAIL SERVER URL
-MAILSERVERURL="YOUR_INFO_HERE"    # GENERAL URL OF MAIL SERVER.
 MAILSERVERURL="YOUR_INFO_HERE"    # GENERAL URL OF MAIL SERVER.
 MAILSERVERPWD="YOUR_INFO_HERE"    # PASSWORD FOR E-MAIL SERVER. YOU CAN DELETE THIS
                                                  #   AFTER INSTALLING THE MAIL SERVER, OR YOU CAN LEAVE IT
@@ -858,6 +869,7 @@ if [[ "$CONFIGBASH" = 1 ]]; then
 	alias sagug='sudo apt upgrade'
 	alias sas='sudo apt search'
 	alias sn='sudo nano'
+	alias ssc='sudo systemctl'
 	alias ugr='sudo apt list --upgradable'
 
 	# ALIASES FOR VIEWING LOGFILES
@@ -867,6 +879,7 @@ if [[ "$CONFIGBASH" = 1 ]]; then
 	alias flog='tail -f -n 25 /var/log/fail2ban.log'
 	alias klog='tail -f -n 25 /var/log/kern.log'
 	alias mlog='tail -f -n 25 /var/log/mail.log'
+	alias mslog='tail -f -n 25 /var/log/apache2/modsec_audit.log'
 	alias mylog='tail -f -n 25 /var/log/mysql/error.log'
 	alias slog='tail -f -n 25 /var/log/syslog'
 	alias ulog='tail -f -n 25 /var/log/ufw.log'
@@ -1180,14 +1193,14 @@ if [[ "$SSHPWDSW" = 1 ]]; then
 
         # RECONFIGURE SSHD_CONFIG FILE
         # Much taken from here: https://stribika.github.io/2015/01/04/secure-secure-shell.html
-        configLine "^[# ]*AllowTcpForwarding.*$"              "AllowTcpForwarding yes" /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*AllowTcpForwarding.*$"              "AllowTcpForwarding no" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*AllowUsers.*$"                      "AllowUsers ${USER}" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*AuthorizedKeysFile.*$"              "AuthorizedKeysFile %h/.ssh/authorized_keys" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*ChallengeResponseAuthentication.*$" "ChallengeResponseAuthentication no" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*Ciphers.*$"                         "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*ClientAliveCountMax.*$"             "ClientAliveCountMax 3" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*ClientAliveInterval.*$"             "ClientAliveInterval 900" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*Compression.*$"                     "Compression DELAYED" /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*ClientAliveCountMax.*$"             "ClientAliveCountMax 2" /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*ClientAliveInterval.*$"             "ClientAliveInterval 300" /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*Compression.*$"                     "Compression no" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*DenyGroups.*$"                      "DenyGroups root" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*DenyUsers.*$"                       "DenyUsers root" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*HostbasedAuthentication.*$"         "HostbasedAuthentication no" /etc/ssh/sshd_config >/dev/null 2>&1
@@ -1195,7 +1208,7 @@ if [[ "$SSHPWDSW" = 1 ]]; then
         configLine "^[# ]*KexAlgorithms.*$"                   "KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*LogLevel.*$"                        "LogLevel VERBOSE" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*LoginGraceTime.*$"                  "LoginGraceTime 20" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*MaxAuthTries.*$"                    "MaxAuthTries 5" /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*MaxAuthTries.*$"                    "MaxAuthTries 3" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*PasswordAuthentication.*$"          "PasswordAuthentication yes" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*PermitEmptyPasswords.*$"            "PermitEmptyPasswords no" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*PermitRootLogin.*$"                 "PermitRootLogin no" /etc/ssh/sshd_config >/dev/null 2>&1
@@ -1389,6 +1402,7 @@ if [[ "$NECESSARYSW" = 1 ]]; then
     sudo apt upgrade -y
     sudo apt install -y --install-recommends aria2 autoconf automake build-essential curl dos2unix gcc git locales-all make mc members mercurial openssh-server openssl pkg-config recode subversion unicode wget
 
+
     # INSTALL ON DEBIAN ONLY
     if [[ "$OS" = "Debian" ]]; then
         sudo apt install -y --install-recommends linux-headers-$(uname -r)
@@ -1452,10 +1466,41 @@ if [[ "$SERVERSW" = 1 ]]; then
 
     sudo apt install -y --install-recommends acct apachetop apt-listchanges apticron byobu ccze cpulimit discus fancontrol figlet hddtemp htop hwinfo iftop iotop iptraf iptstate iselect lm-sensors locate lolcat net-tools nethogs nload nmap nmon powertop rng-tools screen screenie smartmontools speedometer speedtest-cli tmux traceroute unattended-upgrades vnstat w3m whowatch
 
+    sudo apt install -y sysstat
+
     # INSTALL ON EVERYTHING BUT DEBIAN
     if ! [[ "$OS" = "Debian" ]]; then
         sudo apt install -y --install-recommends mytop
     fi
+
+
+    ####################
+    # ENABLE SYSSTAT
+    ####################
+
+    # RESTORE BACKUP OF /etc/default/sysstat IF IT EXISTS, ELSE MAKE A BACKUP
+    if [[ -f /etc/default/sysstat.BAK ]]; then
+        sudo rm /etc/default/sysstat
+        sudo cp /etc/default/sysstat.BAK /etc/default/sysstat
+    else
+        sudo cp /etc/default/sysstat /etc/default/sysstat.BAK
+    fi
+
+    # ENABLE SYSSTAT
+    configLine "^ENABLED[ =]*.*" 'ENABLED="true"'  /etc/default/sysstat
+
+
+    # RESTORE BACKUP OF /etc/cron.d/sysstat IF IT EXISTS, ELSE MAKE A BACKUP
+    if [[ -f /etc/cron.d/sysstat.BAK ]]; then
+        sudo rm /etc/cron.d/sysstat
+        sudo cp /etc/cron.d/sysstat.BAK /etc/cron.d/sysstat
+    else
+        sudo cp /etc/cron.d/sysstat /etc/cron.d/sysstat.BAK
+    fi
+
+    # SHORTEN REPORTING INTERVAL FROM 10 TO 2 MINUTES
+    configLine "^[ ]*5-55\/10.*$"  "*/2 * * * * root command -v debian-sa1 > /dev/null \&\& debian-sa1 1 1"  /etc/cron.d/sysstat
+
 
     ####################
     # INSTALL MONITORING SOFTWARE
@@ -1520,6 +1565,78 @@ if [[ "$SERVERSW" = 1 ]]; then
     echo ""
 else
     echo "${CORG}${BLD}==========> Skipping SERVER SOFTWARE installation...${RST}"
+fi
+
+
+
+#######################################################
+# COMPLETELY DISABLE IPV6 SUPPORT ON HOST OS IF DESIRED
+#######################################################
+if [[ "$DISABLEIPV6" = 1 ]]; then
+
+    echo ""
+    echo "${CLBL}${BLD}==========> Disabling IPV6 SUPPORT...${RST}"
+
+    ##### RESTORE BACKUP OF /etc/sysctl.conf IF IT EXISTS, ELSE MAKE A BACKUP
+    if [[ -f /etc/sysctl.conf.BAK ]]; then
+        sudo rm /etc/sysctl.conf
+        sudo cp /etc/sysctl.conf.BAK /etc/sysctl.conf
+    else
+        sudo cp /etc/sysctl.conf /etc/sysctl.conf.BAK
+    fi
+
+    # ADD NECESSARY VALUES TO /etc/sysctl.conf
+    configLine "^[ ]*net.ipv6.conf.all.disable_ipv6.*$"     "net.ipv6.conf.all.disable_ipv6=1"     /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[ ]*net.ipv6.conf.default.disable_ipv6.*$" "net.ipv6.conf.default.disable_ipv6=1" /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[ ]*net.ipv6.conf.lo.disable_ipv6.*$"      "net.ipv6.conf.lo.disable_ipv6=1"      /etc/sysctl.conf >/dev/null 2>&1
+
+
+    ##### CREATE SCRIPT TO MAKE SURE THESE KERNEL PARAMS ARE READ AT BOOT TIME
+
+    # MAKE BACKUP OF /etc/rc.local IF THE FILE EXISTS, ELSE CREATE THE FILE
+    if [[ -f /etc/rc.local ]]; then
+        sudo cp /etc/rc.local /etc/rc.local.BAK
+    else
+        sudo touch /etc/rc.local
+    fi
+
+    # WRITE CONTENTS TO /etc/rc.local
+    sudo tee -a /etc/rc.local <<- EOF >/dev/null 2>&1
+	#!/bin/bash
+	# /etc/rc.local
+
+	/etc/sysctl.d
+	/etc/init.d/procps restart
+
+	exit 0
+
+EOF
+
+    ##### MAKE /etc/rc.local EXECUTABLE
+    sudo chmod 755 /etc/rc.local
+
+    ##### RELOAD CONFIG FILE TO MAKE CHANGES HAPPEN NOW.
+    sudo sysctl -p >/dev/null 2>&1
+
+    ##### FORCE apt TO USE IPV4
+
+    # MAKE BACKUP OF /etc/rc.local IF THE FILE EXISTS, ELSE CREATE THE FILE
+    if [[ -f /etc/apt/apt.conf.d/99force-ipv4 ]]; then
+        sudo cp /etc/apt/apt.conf.d/99force-ipv4 /etc/apt/apt.conf.d/99force-ipv4.BAK
+    else
+        sudo touch /etc/apt/apt.conf.d/99force-ipv4
+    fi
+
+    # WRITE CONTENTS TO /etc/rc.local
+    sudo tee -a /etc/apt/apt.conf.d/99force-ipv4 <<- EOF >/dev/null 2>&1
+    Acquire::ForceIPv4 "true";
+
+EOF
+
+    echo "${CGRN}${BLD}==========> IPV6 SUPPORT disabled.${RST}"
+    echo ""
+else
+    echo "${CORG}${BLD}==========> Skipping disabling of IPV6 SUPPORT...${RST}"
 fi
 
 
@@ -1933,13 +2050,15 @@ if [[ "$CQPWEBSW" = 1 ]]; then
     fi
 
     # PHP: MODIFY CONFIG FILE
-    configLine "^[; \t]*memory_limit[ =].*"                  "memory_limit = 512M"             php.ini
-    configLine "^[; \t]*max_execution_time[ =].*"            "max_execution_time = 600"        php.ini
-    configLine "^[; \t]*upload_max_filesize[ =].*"           "upload_max_filesize = 128M"      php.ini
-    configLine "^[; \t]*post_max_size[ =].*"                 "post_max_size = 128M"            php.ini
-    configLine "^[; \t]*mysqli.allow_local_infile[ =].*"     "mysqli.allow_local_infile = On"  php.ini
-    configLine "^[; \t]*extension=mysqli.*$"                 "extension=mysqli"                php.ini
-    configLine "^[; \t]*extension=gd2.*$"                    "extension=gd2"                   php.ini
+    configLine "^[; \t]*memory_limit[ =].*"              "memory_limit = 512M"             php.ini
+    configLine "^[; \t]*max_execution_time[ =].*"        "max_execution_time = 600"        php.ini
+    configLine "^[; \t]*upload_max_filesize[ =].*"       "upload_max_filesize = 128M"      php.ini
+    configLine "^[; \t]*post_max_size[ =].*"             "post_max_size = 128M"            php.ini
+    configLine "^[; \t]*mysqli.allow_local_infile[ =].*" "mysqli.allow_local_infile = On"  php.ini
+#     configLine "^[; \t]*extension=mysqli.*$"             "extension=mysqli"                php.ini
+#     configLine "^[; \t]*extension=gd2.*$"                "extension=gd2"                   php.ini
+    configLine "^[; \t]*expose_php[ =].*"                "expose_php = off"                php.ini
+
 
     ####################
     # PHP CLI CONFIGURATION
@@ -2766,13 +2885,28 @@ EOF
 	byobu split-window -v
 	byobu send-keys "speedometer -i 2 -r ${ETHERNET} -t ${ETHERNET}" C-m
 
-	# WINDOW 3: S-TUI
-	byobu new-window -t $USER:3 -n 'S-TUI'
-	byobu send-keys "s-tui" C-m
+	# WINDOW 3: APACHE ACCESS LOG
+	byobu new-window -t $USER:3 -n 'APA'
+	byobu send-keys "apalog" C-m
 
-	# WINDOW 4: MC
-	byobu new-window -t $USER:4 -n 'MC'
-	byobu send-keys "mc" C-m
+	# WINDOW 4: APACHE ERROR LOG
+	byobu new-window -t $USER:4 -n 'APE'
+	byobu send-keys "apelog" C-m
+
+	# WINDOW 5: UFW LOG
+	byobu new-window -t $USER:5 -n 'UFW'
+	byobu send-keys "ulog" C-m
+
+	# WINDOW 6: AUTH LOG
+	byobu new-window -t $USER:6 -n 'ALOG'
+	byobu send-keys "alog" C-m
+
+	# WINDOW 7: FAIL2BAN LOG
+	byobu new-window -t $USER:7 -n 'FLOG'
+	byobu send-keys "flog" C-m
+
+	# WINDOW 8: CLI 2
+	byobu new-window -t $USER:8 -n 'CLI2'
 
 	# START BYOBU
 	byobu
@@ -3401,7 +3535,6 @@ if [[ "$SECURITYSW" = 1 ]]; then
     ####################
     echo ""
     echo "${CLBL}==========> Hardening sysctl.conf settings...${RST}"
-    configLine "^[# ]*kernel.exec-shield.*$"                     "kernel.exec-shield=1"                     /etc/sysctl.conf
     configLine "^[# ]*kernel.randomize_va_space.*$"              "kernel.randomize_va_space=1"              /etc/sysctl.conf
     configLine "^[# ]*net.ipv4.conf.all.accept_redirects.*$"     "net.ipv4.conf.all.accept_redirects=0"     /etc/sysctl.conf
     configLine "^[# ]*net.ipv4.conf.all.accept_source_route.*$"  "net.ipv4.conf.all.accept_source_route=0"  /etc/sysctl.conf
@@ -3414,7 +3547,7 @@ if [[ "$SECURITYSW" = 1 ]]; then
     configLine "^[# ]*net.ipv4.conf.default.rp_filter.*$"        "net.ipv4.conf.default.rp_filter=1"        /etc/sysctl.conf
     configLine "^[# ]*net.ipv4.conf.default.send_redirects.*$"   "net.ipv4.conf.default.send_redirects=0"   /etc/sysctl.conf
     configLine "^[# ]*net.ipv4.icmp_echo_ignore_broadcasts.*$"   "net.ipv4.icmp_echo_ignore_broadcasts=1"   /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.icmp_ignore_bogus_error_messages.*$" "net.ipv4.icmp_ignore_bogus_error_messages=1=1" /etc/sysctl.conf
+    configLine "^[# ]*net.ipv4.icmp_ignore_bogus_error_responses.*$" "net.ipv4.icmp_ignore_bogus_error_responses=1" /etc/sysctl.conf
     configLine "^[# ]*net.ipv4.icmp_ignore_bogus_error_responses.*$" "net.ipv4.icmp_ignore_bogus_error_responses=1" /etc/sysctl.conf
     configLine "^[# ]*net.ipv4.icmp_ignore_bogus_error_responses.*$" "net.ipv4.icmp_ignore_bogus_error_responses=1" /etc/sysctl.conf
     configLine "^[# ]*net.ipv4.ip_forward.*$"                    "net.ipv4.ip_forward=0"                    /etc/sysctl.conf
@@ -3574,127 +3707,315 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 
     if [[ "$ANSWER" = [yY] || "$ANSWER" = [yY][eE][sS] ]]; then
 
-        # Install the software
+        ############### INSTALL THE SOFTWARE ###############
         sudo apt update -y
         sudo apt autoremove -y
-        sudo apt install -y --install-recommends fail2ban iptables-persistent logcheck
+        sudo apt install -y --install-recommends --install-suggests fail2ban iptables-persistent logcheck python3-dnspython geoip-bin geoip-database-extra
 
+        ############### CREATE JAIL.LOCAL CONFIG FILE ###############
         # Delete any pre-existing local config file and create a new one
         sudo rm -f /etc/fail2ban/jail.local
         sudo touch /etc/fail2ban/jail.local
 
         # Create config file
         sudo tee -a /etc/fail2ban/jail.local <<- EOF >/dev/null 2>&1
-		[default]
-		bantime = 86400
-		findtime = 3600
-		maxretry = 3
+		[INCLUDES]
+		before = paths-debian.conf
+
+		[DEFAULT]
+
+		############### MISCELLANEOUS OPTIONS ###############
+		ignorself = true
+		ignoreip = ${WHITELISTEDIPS}
+		bantime  = 6h
+		findtime  = 6h
+		maxretry = 4
+		backend = auto
+		usedns = warn
+		logencoding = auto
+		mode = normal
+		filter = %(__name__)s[mode=%(mode)s]
+
+		############### ACTIONS ###############
+		destemail = ${ADMINMAILADDR}
+		sender = fail2ban@${SERVERALIAS}
+		#mta = sendmail
+		mta = mail
+		protocol = tcp
+		port = 0:65535
+		fail2ban_agent = Fail2Ban/%(fail2ban_version)s
+
+		# ACTION SHORTCUTS. TO BE USED TO DEFINE ACTION PARAMETER
 		banaction = iptables-multiport
 		banaction_allports = iptables-allports
-		backend = auto ; pyinotify, gamin, polling, systemd, auto
-		destemail = ${PERSONALMAILADDR}
-		sender = ${ADMINMAILADDR}
-		sendername = Fail2Ban.${LOCALHOSTNAME}
-		mta = sendmail
-		action = %(action_mwl)s
-		ignoreip = ${WHITELISTEDIPS}
 
-		[ssh]
+		# THE SIMPLEST ACTION TO TAKE: BAN ONLY
+		action_ = %(banaction)s[name=%(__name__)s, bantime="%(bantime)s", port="%(port)s", protocol="%(protocol)s", chain="%(chain)s"]
+
+		# BAN & SEND AN E-MAIL WITH WHOIS REPORT TO THE DESTEMAIL.
+		action_mw = %(banaction)s[name=%(__name__)s, bantime="%(bantime)s", port="%(port)s", protocol="%(protocol)s", chain="%(chain)s"]
+		            %(mta)s-whois[name=%(__name__)s, sender="%(sender)s", dest="%(destemail)s", protocol="%(protocol)s", chain="%(chain)s"]
+
+		# BAN & SEND AN E-MAIL WITH WHOIS REPORT AND RELEVANT LOG LINES
+		# TO THE DESTEMAIL.
+		action_mwl = %(banaction)s[name=%(__name__)s, bantime="%(bantime)s", port="%(port)s", protocol="%(protocol)s", chain="%(chain)s"]
+		             %(mta)s-whois-lines[name=%(__name__)s, sender="%(sender)s", dest="%(destemail)s", logpath=%(logpath)s, chain="%(chain)s"]
+
+
+		# CHOOSE DEFAULT ACTION.  TO CHANGE, JUST OVERRIDE VALUE OF 'ACTION' WITH THE
+		# INTERPOLATION TO THE CHOSEN ACTION SHORTCUT (E.G.  ACTION_MW, ACTION_MWL, ETC) IN JAIL.LOCAL
+		# GLOBALLY (SECTION [DEFAULT]) OR PER SPECIFIC SECTION.
+		action = %(action_)s
+
+
+		############### JAILS ###############
+
+		###### SSH servers ######
+
+		[sshd]
+		# TO USE MORE AGGRESSIVE SSHD MODES SET FILTER PARAMETER "MODE" IN JAIL.LOCAL:
+		# NORMAL (DEFAULT), DDOS, EXTRA OR AGGRESSIVE (COMBINES ALL).
+		# SEE "TESTS/FILES/LOGS/SSHD" OR "FILTER.D/SSHD.CONF" FOR USAGE EXAMPLE AND DETAILS.
 		enabled = true
-		port = ssh,${SSHPORT}
-		filter = sshd
-		logpath = /var/log/auth.log
-		action = %(action_mwl)s
+		mode    = aggressive
+		port    = ssh,${SSHPORT}
+		logpath = %(sshd_log)s
+		backend = %(sshd_backend)s
+		bantime = 1h
 
-		[postfix]
-		enabled = true
-		port = smtp,ssmtp,${SMTPPORT},${POP3PORT},${IMAPPORT}
-		filter = postfix
-		logpath = /var/log/mail.log
-		action = %(action_mwl)s
+		[dropbear]
+		enabled  = true
+		port     = ssh,${SSHPORT}
+		logpath  = %(dropbear_log)s
+		backend  = %(dropbear_backend)s
+		bantime  = 72h
 
-		[postfix-sasl]
-		enabled = true
-		port = smtp,465,submission,imap,imaps,pop3,pop3s,${SMTPPORT},${POP3PORT},${IMAPPORT}
-		filter = postfix[mode=auth]
-		logpath = /var/log/mail.log
-		backend = %(postfix_backend)s
-		action = %(action_mwl)s
 
-		# Block failed Apache login attempts
-		[apache]
-		enabled = true
-		port = http,https
-		filter = apache-auth
-		logpath = /var/log/apache2/*error.log
-		#logpath = %(apache_error_log)s
+		##### HTTP servers ######
 
-		# Block remote hosts that try to request malicious bots
+		[apache-auth]
+		enabled  = true
+		port     = http,https
+		logpath  = %(apache_error_log)s
+
 		[apache-badbots]
-		enabled = true
-		port = http,https
-		filter = apache-badbots
-		bantime = 84000
+		enabled  = true
+		port     = http,https
+		logpath  = %(apache_access_log)s
+		bantime  = 72h
 		maxretry = 1
-		logpath = /var/log/apache2/*error.log
-		#logpath = %(apache_access_log)s
 
-		# Block remote hosts that try to search for scripts on the website to execute
 		[apache-noscript]
-		enabled = true
-		port = http,https
-		filter = apache-noscript
-		logpath = /var/log/apache2/*error.log
-		#logpath = %(apache_error_log)s
+		enabled  = true
+		port     = http,https
+		logpath  = %(apache_error_log)s
+		bantime  = 72h
+		maxretry = 1
 
-		# Block remote hosts that try to request suspicious URLs
 		[apache-overflows]
-		enabled = true
-		port = http,https
-		filter = apache-overflows
-		logpath = /var/log/apache2/*error.log
-		#logpath = %(apache_error_log)s
+		enabled  = true
+		port     = http,https
+		logpath  = %(apache_error_log)s
+		bantime  = 72h
 		maxretry = 2
 
 		[apache-nohome]
-		enabled = true
-		port = http,https
-		logpath = %(apache_error_log)s
+		enabled  = true
+		port     = http,https
+		logpath  = %(apache_error_log)s
+		bantime  = 72h
 		maxretry = 2
 
 		[apache-botsearch]
-		enabled = true
-		port = http,https
-		logpath = %(apache_error_log)s
+		enabled  = true
+		port     = http,https
+		logpath  = %(apache_error_log)s
+		bantime  = 72h
 		maxretry = 2
 
 		[apache-fakegooglebot]
-		enabled = true
-		port = http,https
-		logpath = %(apache_access_log)s
+		enabled  = true
+		port     = http,https
+		logpath  = %(apache_access_log)s
 		maxretry = 1
 		ignorecommand = %(ignorecommands_dir)s/apache-fakegooglebot <ip>
 
 		[apache-modsecurity]
-		enabled = true
-		port = http,https
-		logpath = %(apache_error_log)s
+		enabled  = true
+		port     = http,https
+		logpath  = %(apache_error_log)s
 		maxretry = 2
 
 		[apache-shellshock]
-		enabled = true
-		port = http,https
-		logpath = %(apache_error_log)s
+		enabled  = true
+		port     = http,https
+		logpath  = %(apache_error_log)s
+		bantime  = 72h
 		maxretry = 1
+
+		# BAN ATTACKERS THAT TRY TO USE PHP'S URL-FOPEN() FUNCTIONALITY
+		# THROUGH GET/POST VARIABLES. - EXPERIMENTAL, WITH MORE THAN A YEAR
+		# OF USAGE IN PRODUCTION ENVIRONMENTS.
+
+		[php-url-fopen]
+		enabled = true
+		port    = http,https
+		logpath = %(apache_access_log)s
+
+
+		###### Web Applications ######
+
+		[monit]
+		#Ban clients brute-forcing the monit gui login
+		enabled  = false
+		port = 2812
+		logpath  = /var/log/monit
+
+
+		###### Mail servers ######
+
+		[postfix]
+		# To use another modes set filter parameter "mode" in jail.local:
+		enabled = true
+		mode    = more
+		port    = smtp,465,submission,${SMTPPORT},${POP3PORT},${IMAPPORT}
+		logpath = %(postfix_log)s
+		backend = %(postfix_backend)s
+
+		[postfix-rbl]
+		enabled  = true
+		filter   = postfix[mode=rbl]
+		port     = smtp,465,submission,${SMTPPORT},${POP3PORT},${IMAPPORT}
+		logpath  = %(postfix_log)s
+		backend  = %(postfix_backend)s
+		maxretry = 1
+
+		[sendmail-auth]
+		enabled = true
+		port    = submission,465,smtp,${SMTPPORT},${POP3PORT},${IMAPPORT}
+		logpath = %(syslog_mail)s
+		backend = %(syslog_backend)s
+
+		[sendmail-reject]
+		# TO USE MORE AGGRESSIVE MODES SET FILTER PARAMETER "MODE" IN JAIL.LOCAL:
+		# NORMAL (DEFAULT), EXTRA OR AGGRESSIVE
+		# SEE "TESTS/FILES/LOGS/SENDMAIL-REJECT" OR "FILTER.D/SENDMAIL-REJECT.CONF" FOR USAGE EXAMPLE AND DETAILS.
+		enabled  = true
+		#mode    = normal
+		port     = smtp,465,submission,${SMTPPORT},${POP3PORT},${IMAPPORT}
+		logpath  = %(syslog_mail)s
+		backend  = %(syslog_backend)s
+
+
+		# MAIL SERVERS AUTHENTICATORS: MIGHT BE USED FOR SMTP,FTP,IMAP SERVERS, SO
+		# ALL RELEVANT PORTS GET BANNED
+
+		[postfix-sasl]
+		enabled  = true
+		filter   = postfix[mode=auth]
+		port     = smtp,465,submission,imap,imaps,pop3,pop3s,${SMTPPORT},${POP3PORT},${IMAPPORT}
+		# YOU MIGHT CONSIDER MONITORING /VAR/LOG/MAIL.WARN INSTEAD IF YOU ARE
+		# RUNNING POSTFIX SINCE IT WOULD PROVIDE THE SAME LOG LINES AT THE
+		# "WARN" LEVEL BUT OVERALL AT THE SMALLER FILESIZE.
+		logpath  = %(postfix_log)s
+		backend  = %(postfix_backend)s
+
+
+		###### JAIL FOR MORE EXTENDED BANNING OF PERSISTENT ABUSERS ######
+		# !!! WARNINGS !!!
+		# 1. Make sure that your loglevel specified in fail2ban.conf/.local
+		#    is not at DEBUG level -- which might then cause fail2ban to fall into
+		#    an infinite loop constantly feeding itself with non-informative lines
+		# 2. Increase dbpurgeage defined in fail2ban.conf to e.g. 648000 (7.5 days)
+		#    to maintain entries for failed logins for sufficient amount of time
+
+		[recidive]
+		enabled   = true
+		logpath   = /var/log/fail2ban.log
+		banaction = %(banaction_allports)s
+		bantime   = 1w
+		findtime  = 1d
+
+
+		# Generic filter for PAM. Has to be used with action which bans all
+		# ports such as iptables-allports, shorewall
+
+		[pam-generic]
+		enabled   = true
+		# PAM-GENERIC FILTER CAN BE CUSTOMIZED TO MONITOR SPECIFIC SUBSET OF 'TTY'S
+		banaction = %(banaction_allports)s
+		logpath   = %(syslog_authpriv)s
+		backend   = %(syslog_backend)s
+
+		[phpmyadmin-syslog]
+		enabled = true
+		port    = http,https
+		logpath = %(syslog_authpriv)s
+		backend = %(syslog_backend)s
+
+		[zoneminder]
+		# ZONEMINDER HTTP/HTTPS WEB INTERFACE AUTH
+		# LOGS AUTH FAILURES TO APACHE2 ERROR LOG
+		enabled = true
+		port    = http,https
+		logpath = %(apache_error_log)s
 
 EOF
 
+        ############### FIX REGEX FOR __bsd_syslog_verbose ###############
+        # It doesn't seem to work right with auth.log's date format (mmm d).
+        sudo cp /etc/fail2ban/filter.d/common.conf /etc/fail2ban/filter.d/common.local
+        configLine "^[# ]*__bsd_syslog_verbose.*$"  "__bsd_syslog_verbose = (<[^.]+ [^.]+>)" /etc/fail2ban/filter.d/common.local >/dev/null 2>&1
+
+        ############### INSTALL FAIL2BAN MONITORING SCRIPT
+        if [[ -f ~/bin/f2b-monitor.sh ]]; then
+            rm ~/bin/f2b-monitor.sh
+        fi
+
+        touch ~/bin/f2b-monitor.sh
+
+        tee -a ~/bin/f2b-monitor.sh <<- EOF >/dev/null 2>&1
+		#!/bin/bash
+
+		# Fail2Ban Log Check.
+		# Adapted from script by Abhishek Ghosh at https://thecustomizewindows.com
+
+		echo ""
+		echo "----------------------------------------------------------------------------"
+		echo "Bad IPs from only from /var/log/fail2ban.log alone:"
+		echo "-Number-IP------------------------------------------------------------------"
+		grep "Ban " /var/log/fail2ban.log | grep `date +%Y-%m-%d` | awk '{print $NF}' | sort | awk '{print $1,"("$1")"}' | logresolve | uniq -c | sort
+		echo ""
+		echo "----------------------------------------------------------------------------"
+		echo "Number of password attempts failed from all non-gzipped fail2ban.log files:"
+		echo "-Number---MM--DD------------------------------------------------------------"
+		cat /var/log/auth.log* | grep 'Failed password' | grep sshd | awk '{print $1,$2}' | sort | uniq -c
+		echo ""
+		echo "----------------------------------------------------------------------------"
+		echo "You unbanned:"
+		echo "-Number-IP------------------------------------------------------------------"
+		grep "Unban " /var/log/fail2ban.log | grep `date +%Y-%m-%d` | awk '{print $NF}' | sort | awk '{print $1,"("$1")"}' | logresolve | uniq -c | sort
+		echo ""
+		echo "----------------------------------------------------------------------------"
+		echo "Countries from fail2ban.log who are Banned:"
+		echo "-Number-ASN-ISP-------------------------------------------------------------"
+		zgrep -h "Ban " /var/log/fail2ban.log* | awk '{print $NF}' | sort | uniq -c | xargs -n 1 geoiplookup { } | sort | uniq -c | sort | sed -r 's/ GeoIP Country Edition://g' | $
+		echo "----------------------------------------------------------------------------"
+		echo ""
+
+EOF
+        # Make the script executable
+        sudo chmod ug+x ~/bin/f2b-monitor.sh
+
+
+        ############### RESTART FAIL2BAN ###############
         # (RE)START FAIL2BAN AND RELOAD CONFIG
         sudo fail2ban-client reload
         sudo systemctl restart fail2ban
 
         # Enable fail2ban on startup
         sudo systemctl enable fail2ban
+
 
         echo "${CGRN}${BLD}==========> FAIL2BAN installation finished.${RST}"
         echo "${CWHT}${BLD}            To unban someone (probably yourself): ${CORG}sudo fail2ban-client set sshd unbanip <IP-ADDRESS>${RST}"
@@ -3708,6 +4029,133 @@ EOF
         echo "${CORG}${BLD}==========> Skipping FAIL2BAN installation...${RST}"
     fi
 fi
+
+
+########################################
+# INSTALL APACHE SECURITY MODULES
+########################################
+if [[ "$APACHESECSW" = 1 ]]; then
+
+    echo ""
+    echo "${CLBL}${BLD}==========> Installing APACHE SECURITY MODULES...${RST}"
+
+    #########################
+    # INSTALL THE SOFTWARE
+    #########################
+    sudo apt update -y
+    sudo apt autoremove -y
+    sudo apt install -y --install-recommends apache2 apache2-dev apache2-utils libapache2-mod-evasive ca-certificates dh-autoreconf gawk git iputils-ping libapache2-mod-security2 libcurl4-gnutls-dev libexpat1-dev libgeoip-dev liblmdb-dev libpcre++-dev libpcre3-dev libssl-dev libtool libxml2 libxml2-dev libyajl-dev locales lua5.2-dev pkgconf wget zlib1g-dev zlibc
+
+
+    #########################
+    # CONFIGURE MOD_EVASIVE
+    #########################
+
+    # IF BACKUP OF CONF FILE EXISTS, RESTORE IT BEFORE PROCEEDING. OTHERWISE, MAKE BACKUP
+    if [[ -f "/etc/apache2/mods-enabled/evasive.conf.BAK" ]]; then
+        # RESTORE BACKUP
+        sudo rm -f /etc/apache2/mods-enabled/evasive.conf
+        sudo cp /etc/apache2/mods-enabled/evasive.conf.BAK /etc/apache2/mods-enabled/evasive.conf
+    else
+        # MAKE BACKUP AND REMOVE ORIGINAL
+        sudo mv -f /etc/apache2/mods-enabled/evasive.conf /etc/apache2/mods-enabled/evasive.conf.BAK
+        sudo rm -f /etc/apache2/mods-enabled/evasive.conf
+    fi
+
+
+    # TRANSFORM WHITELISTED IPS INTO FORMAT SUITABLE FOR MOD_EVASIVE
+
+    # Read values into new variable
+    EVASIVE_WHITELISTEDIPS="${WHITELISTEDIPS}"
+    # Change CIDR notation to asterisks (only works for /8, /16 and /24.
+    EVASIVE_WHITELISTEDIPS=$(echo "${EVASIVE_WHITELISTEDIPS}" | sed -r 's/([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\/24/*.*.*/gm')
+    EVASIVE_WHITELISTEDIPS=$(echo "${EVASIVE_WHITELISTEDIPS}" | sed -r 's/([0-9]{1,3})\.([0-9]{1,3})\/16/*.*/gm')
+    EVASIVE_WHITELISTEDIPS=$(echo "${EVASIVE_WHITELISTEDIPS}" | sed -r 's/([0-9]{1,3})\/8/*/gm')
+    # INSERT 'DOSWhitelist' BEFORE EACH IP AND \n AFTER EACH ONE
+    EVASIVE_WHITELISTEDIPS=$(echo "${EVASIVE_WHITELISTEDIPS}" | sed -r 's/(^| )/      DOSWhitelist        /gm')
+    EVASIVE_WHITELISTEDIPS=$(echo "${EVASIVE_WHITELISTEDIPS}" | sed -r 's/([0-9*])($| )/\1\n/gm')
+
+    # MODIFY MOD_EVASIVE CONFIG FILE
+    sudo tee -a /etc/apache2/mods-enabled/evasive.conf <<- EOF >/dev/null 2>&1
+	<IfModule mod_evasive20.c>
+	     DOSHashTableSize    6194
+	     DOSPageCount        4
+	     DOSSiteCount        50
+	     DOSPageInterval     1
+	     DOSSiteInterval     1
+	     DOSBlockingPeriod   600
+	${EVASIVE_WHITELISTEDIPS}
+	    DOSEmailNotify      ${ADMINMAILADDR}
+	#   DOSSystemCommand    "su - someuser -c '/sbin/... %s ...'"
+	    DOSLogDir           "/var/log/apache2"
+	</IfModule>
+
+EOF
+
+
+    #########################
+    # CONFIGURE MOD_SECURITY
+    #########################
+
+    # Copy config template
+    sudo cp /etc/modsecurity/modsecurity.conf-recommended /etc/modsecurity/modsecurity.conf
+
+    # Change configuration to turn mod_security on
+    configLine "^[# ]*SecRuleEngine.*$" "SecRuleEngine on" /etc/modsecurity/modsecurity.conf >/dev/null 2>&1
+
+    # FIX MOD_SECURITY LOGFILE OWNERSHIP AND PERMISSIONS
+    sudo chown www-data:www-data /var/log/apache2/modsec_audit.log
+    sudo chmod 660 /var/log/apache2/modsec_audit.log
+
+    # RESTART APACHE SERVER
+    sudo systemctl restart apache2.service
+
+
+    #########################
+    # INSTALL AND CONFIGURE OWASP MODSECURITY CORE RULE SET FOR MOD_SECURITY
+    #########################
+
+    # STASH BUILT-IN MOD_SECURITY RULES WHERE THEY WON'T BE READ
+    sudo mv /usr/share/modsecurity-crs /usr/share/modsecurity-crs.BAK
+
+    # CLONE OWASP CRS GITHUB
+    sudo git clone https://github.com/SpiderLabs/owasp-modsecurity-crs.git /usr/share/modsecurity-crs
+
+    # CREATE PERSONAL CONFIG FILE USING TEMPLATE
+    sudo cp /usr/share/modsecurity-crs/crs-setup.conf.example /usr/share/modsecurity-crs/crs-setup.conf
+
+    # CONFIGURE MOD_SECURITY TO USE OWASP CRS
+
+    # If backup exists, restore it before proceeding. otherwise, make backup
+    if [[ -f "/etc/apache2/mods-enabled/security2.conf.BAK" ]]; then
+        # RESTORE BACKUP
+        sudo rm /etc/apache2/mods-enabled/security2.conf
+        sudo cp /etc/apache2/mods-enabled/security2.conf.BAK /etc/apache2/mods-enabled/security2.conf
+    else
+        # MAKE BACKUP
+        sudo cp /etc/apache2/mods-enabled/security2.conf /etc/apache2/mods-enabled/security2.conf.BAK
+    fi
+
+    # Edit contents of /etc/apache2/mods-enabled/security2.conf
+    configLine "^[# \\t]*IncludeOptional \/usr\/share\/modsecurity-crs\/owasp-crs.*$" "\\tIncludeOptional /usr/share/modsecurity-crs/*.conf\\n\\tIncludeOptional /usr/share/modsecurity-crs/rules/*.conf" /etc/apache2/mods-enabled/security2.conf >/dev/null 2>&1
+
+    # Create user config files from templates
+    sudo cp /usr/share/modsecurity-crs/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf.example /usr/share/modsecurity-crs/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf
+    sudo cp /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf.example /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf
+
+    # WARNING
+    # FOR NOW, /usr/share/modsecurity-crs/crs-setup.conf MUST BE HAND-CONFIGURED.
+
+
+    echo "${CGRN}${BLD}==========> APACHE SECURITY MODULES installation finished.${RST}"
+    echo       "${CRED}            Kindly reboot after the script finishes!${RST}"
+    echo ""
+
+else
+    echo "${CORG}${BLD}==========> Skipping APACHE SECURITY MODULES...${RST}"
+fi
+
+
 
 ########################################
 # INSTALL THE FREELING TAGGER
