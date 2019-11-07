@@ -3,8 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-11-01
-# VERSION:  81
+# DATE:     2019-11-04
+# VERSION:  82
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes an install of certain versions of Ubuntu or Debian and sets up Open
@@ -22,37 +22,42 @@ SCRIPTNAME="cqpweb-instabox.sh"
 #              While I've made every effort to make it work properly, it comes with no guarantees and
 #              no warranties. Bug reports are most welcome!
 
-
 # CHANGE LOG:
 #
+# v82
+# - Added two new installation options, `vserver` and `vserverdeluxe`, for virtual servers (VPS).
+# - Added support for MOSH (MObile SHell), a faster way of doing SSH.
+# - Added several monitoring tools to server installs, such as `goaccess`.
+# - Fixed error in CIDR notation converter for mod_evasive whitelist.
+#
 # v81
-# - Added installation and configuration of the mod_security and mod_evasive Apache modules (server install).
-# - Added installation and configuration of the OWASP mod_security core rule set.
-# - Added option to completely disable ipv6 support in host OS. This is set with `DISABLEIPV6=1`.
-# - Overhauled the entire installation and configuration of fail2ban to take into account changes
+# - CQPweb: Added installation and configuration of the mod_security and mod_evasive Apache modules (server install).
+# - CQPweb: Added installation and configuration of the OWASP mod_security core rule set.
+# - OS: Added option to completely disable ipv6 support in host OS. This is set with `DISABLEIPV6=1`.
+# - NETWORK: Overhauled the entire installation and configuration of fail2ban to take into account changes
 #   that have appeared over time. More suggested software for it is also installed now.
-# - Removed a few settings in sysctl.conf that have been deprecated.
-# - Hardened several SSH configuration options.
-# - Added installation of `sysstat` to server install.
-# - Fixed three harmless but annoying errors in php.ini (loading gd2 and mysqli extensions improperly).
+# - OS: Removed a few settings in sysctl.conf that have been deprecated.
+# - NETWORK: Hardened several SSH configuration options.
+# - OS: Added installation of `sysstat` to server install.
+# - CQPweb: Fixed three harmless but annoying errors in php.ini (loading gd2 and mysqli extensions improperly).
 #
 # v80
-# - Added URL for CQPweb changelog to version-reporting script.
-# - Set all log-monitoring aliases to display the last 25 lines.
-# - Lengthened fail2ban bantime and findtime.
-# - Added installation of `debsums`, `apt-show-versions` packages.
+# - CQPweb: Added URL for CQPweb changelog to version-reporting script.
+# - CQPweb: Set all log-monitoring aliases to display the last 25 lines.
+# - NETWORK: Lengthened fail2ban bantime and findtime.
+# - OS: Added installation of `debsums`, `apt-show-versions` packages.
 #
 # v79
 # - Very minor fixes.
 #
 # v78
 # - INTERNAL: Changed URL for my personal corpora.
-# - Added timezone info to test e-mail scripts.
+# - OS: Added timezone info to test e-mail scripts.
 #
 # v77
-# - Fixed permission issue with /css and /css/img directories.
-# - Now creates a script in ~/bin to test the CQPweb/PHP mail server.
-# - Midnight commander (mc) is now installed as part of Necessary Software.
+# - CQPweb: Fixed permission issue with /css and /css/img directories.
+# - CQPweb:  Now creates a script in ~/bin to test the CQPweb/PHP mail server.
+# - OS: Midnight commander (mc) is now installed as part of Necessary Software.
 #
 # v76
 # - Changed SourceForce URL to point to the new branch
@@ -173,6 +178,7 @@ SSHGENNEWKEYS=0     # Generate new SSH keys and moduli. The latter will take aro
 NECESSARYSW=0       # Install software necessary for the server to work.
    USEFULSW=0       # Install software considered useful (though optional).
    SERVERSW=0       # Install server software (monitoring, security and such).
+ VIRTUALSRV=0       # Set to 1 for virtual servers (VPS). This uninstalls certain hardware-related software.
 
 # CWB+CQPWEB+CORPORA
   CQPCWBRELEASE=0                           # Install a specific SubVersion release of CWB and CQPweb. "0" downloads latest version.
@@ -238,7 +244,7 @@ SECURITYSW=0        # Install general security software. Highly recommended for 
      UPSSW=0        # Install and configure software for APC BackUPS Pro 900 UPS (051d:0002)
 FAIL2BANSW=0        # Install and configure fail2ban. Important for security! But install this last, after you've confirmed everything works.
 WHITELISTEDIPS="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16" # IP addresses to whitelist (never ban) in fail2ban. Separate with space.
-APACHESECSW=0       # Install the Apache mod_security and mod_evasive security modules.
+APACHESECSW=1       # Install the Apache mod_security and mod_evasive security modules.
 DISABLEIPV6=0       # Completely disable ipv6 support in the host OS.
 
 # ADDITIONAL LINGUISTIC SOFTWARE: HEADLESS SERVER OR GUI
@@ -283,7 +289,7 @@ PERSONALMAILADDR="YOUR_INFO_HERE"      # YOUR PERSONAL E-MAIL ADDRESS. IF YOU WA
  IMAPPORT=993
  POP3PORT=995
   SSHPORT=YOUR_INFO_HERE # CHOOSE A RANDOM HIGH PORT FOR THIS (10000-60000 IS A GOOD RANGE)
-
+ MOSHPORT=YOUR_INFO_HERE # CHOOSE A RANDOM HIGH PORT FOR THIS (10000-60000 IS A GOOD RANGE)
 
 ################################################################################
 # TIP: ENABLE VMWARE SHARED FOLDERS ON HEADLESS UBUNTU SERVER
@@ -310,8 +316,8 @@ LOCALHOSTNAME="$(hostname)"                             # Local system's host na
 #OS="$(cat /etc/lsb-release | grep DISTRIB_ID | sed -r 's/DISTRIB_ID=//')" # Distro name
 OS="$(lsb_release -i -s)" # Distro name
 RELEASE="$(lsb_release -r -s)"
-ETHERNET="$(ip link show | grep '[0-9]: e[a-z0-9]*:' | sed -r 's/^.+ (e[a-z0-9]+):.+$/\1/')" # Ethernet adapter. This is NOT infallible!
-#ETHERNET=$(ifconfig | grep '^e' | sed -r 's/:.+$//')   # Ethernet adapter (older method). This is NOT infallible!
+#ETHERNET="$(ip link show | grep '[0-9]: e[a-z0-9]*:' | sed -r 's/^.+ (e[a-z0-9]+):.+$/\1/')" # Ethernet adapter. NOT infallible! PROBABLY FAILS WITH 2+ ADAPTERS.
+#ETHERNET=$(ifconfig | grep '^e' | sed -r 's/:.+$//')   # Ethernet adapter (older method). NOT infallible! PROBABLY FAILS WITH 2+ ADAPTERS.
 EXTERNALIP="$(wget -qO - http://checkip.amazonaws.com)" # Server's external IP.
 INTERNALIP="$(ip route get 1.2.3.4 | awk '{print $7}')" # Server's internal IP.
 INTERNALIP2="$(ip addr show ${ETHERNET} | grep 'inet ' | awk '{print $2}' | cut -f1 -d'/')" # Server's internal IP (Method 2).
@@ -368,6 +374,19 @@ fi
 # SET VARIABLES FOR DIFFERENT TYPES OF INSTALL.
 # PROVIDE INFO TO USER IF THEY SPECIFY NO ARGUMENT, TOO MANY ARGUMENTS, OR '-h'
 ################################################################################
+
+# DEAL WITH VIRTUAL SERVERS FIRST
+if [[ "$USERARG" = "vserver" ]]; then
+    echo "virtual"
+    USERARG="server"
+    VIRTUALSRV=1
+elif [[ "$USERARG" = "vserverdeluxe" ]]; then
+    echo "virtual"
+    USERARG="serverdeluxe"
+    VIRTUALSRV=1
+fi
+
+# NOW PROCESS THE MAIN INSTALL TYPES
 if [[ "$USERARG" = "default" ]]; then
     # USE VARIABLES AS SET ABOVE.
     echo ""
@@ -645,20 +664,23 @@ else
     echo "${CWHT}${BLD}appropriate values, save it, and run it again with the appropriate argument.${RST}"
     echo ""
     echo "${CWHT}${BLD}Second, you must ${CGRN}run this script with one of the following arguments${CWHT}:${RST}"
-    echo "${CWHT}${BLD}  ${CORG}default${CWHT}      : Use the options that are configured in the script. This lets${RST}"
-    echo "${CWHT}${BLD}                 you set up a customized install and deploy it.${RST}"
-    echo "${CWHT}${BLD}  ${CORG}vm${CWHT}           : Set up a basic CWB and CQPweb install in a virtual machine.${RST}"
-    echo "${CWHT}${BLD}  ${CORG}vmdeluxe${CWHT}     : Set up CWB, CQPweb and a series of other linguistics and NLP${RST}"
-    echo "${CWHT}${BLD}                 software in a virtual machine.${RST}"
-    echo "${CWHT}${BLD}  ${CORG}server${CWHT}       : Set up CWB, CQPweb and basic server software on a server${RST}"
-    echo "${CWHT}${BLD}                 (headless or GUI).${RST}"
-
-    echo "${CWHT}${BLD}  ${CORG}serverdeluxe${CWHT} : Set up CWB, CQPweb and a suite of server-related software on${RST}"
-    echo "${CWHT}${BLD}                 a server (headless or GUI).${RST}"
-    echo "${CWHT}${BLD}  ${CORG}ssh${CWHT}          : Finish SSH setup after doing a server install.${RST}"
-    echo "${CWHT}${BLD}  ${CORG}-h${CWHT}           : See this help message.${RST}"
+    echo "${CWHT}${BLD}  ${CORG}default${CWHT}       : Use the options that are configured in the script. This lets${RST}"
+    echo "${CWHT}${BLD}                  you set up a customized install and deploy it.${RST}"
+    echo "${CWHT}${BLD}  ${CORG}vm${CWHT}            : Set up a basic CWB and CQPweb install in a virtual machine.${RST}"
+    echo "${CWHT}${BLD}  ${CORG}vmdeluxe${CWHT}      : Set up CWB, CQPweb and a series of other linguistics and NLP${RST}"
+    echo "${CWHT}${BLD}                  software in a virtual machine.${RST}"
+    echo "${CWHT}${BLD}  ${CORG}server${CWHT}        : Set up CWB, CQPweb and basic server software on a bare metal server${RST}"
+    echo "${CWHT}${BLD}                  (headless or GUI).${RST}"
+    echo "${CWHT}${BLD}  ${CORG}serverdeluxe${CWHT}  : Set up CWB, CQPweb and a suite of server-related software on${RST}"
+    echo "${CWHT}${BLD}                  a bare metal server (headless or GUI).${RST}"
+    echo "${CWHT}${BLD}  ${CORG}vserver${CWHT}       : Set up CWB, CQPweb and basic server software on a virtual server${RST}"
+    echo "${CWHT}${BLD}                  aka VPS (headless or GUI).${RST}"
+    echo "${CWHT}${BLD}  ${CORG}vserverdeluxe${CWHT} : Set up CWB, CQPweb and a suite of server-related software on${RST}"
+    echo "${CWHT}${BLD}                  a virtual server aka VPS (headless or GUI).${RST}"
+    echo "${CWHT}${BLD}  ${CORG}ssh${CWHT}           : Finish SSH setup after doing a server install.${RST}"
+    echo "${CWHT}${BLD}  ${CORG}-h${CWHT}            : See this help message.${RST}"
     echo ""
-    echo "${CWHT}${BLD}Note that the two server options install and configure SSH public key access. This${RST}"
+    echo "${CWHT}${BLD}Note that the four server options install and configure SSH public key access. This${RST}"
     echo "${CWHT}${BLD}requires an additional step -- after the main install, you must upload your public${RST}"
     echo "${CWHT}${BLD}SSH key to the server and run this script again, this time with the ${CORG}ssh${CWHT} argument.${RST}"
     echo ""
@@ -1280,7 +1302,8 @@ EOF
         echo "${CWHT}${BLD}            My best guesses as to the exact commands you need to connect are the following:${RST}"
         echo "${CORG}${BLD}               ssh ${USER}@${INTERNALIP} -p ${SSHPORT} ${CWHT}(local network)${RST}"
         echo "${CORG}${BLD}               ssh ${USER}@${EXTERNALIP} -p ${SSHPORT} ${CWHT}(remote connection)${RST}"
-        echo "${CWHT}${BLD}            Remember to configure your router to forward port ${SSHPORT} to the server's local IP address ${RST}"
+        echo "${CORG}${BLD}               mosh -p ${MOSHPORT} --ssh=\"ssh -p ${SSHPORT}\" ${USER}@${EXTERNALIP}${CWHT}${RST}"
+        echo "${CWHT}${BLD}            Do configure your router to forward ports ${SSHPORT} and ${MOSHPORT} to the server's local IP address${RST}"
         echo "${CWHT}${BLD}            (probably ${CORG}${INTERNALIP}${CWHT}). Note that root access and empty passwords have been disabled.${RST}"
         echo ""
         echo "${CRED}${BLD}            Your server is now easy to hack! To fix this, switch to Public Key Encryption and disable passwords: ${RST}"
@@ -1322,7 +1345,7 @@ if [[ "$SSHKEYSW" = 1 ]]; then
     sudo apt update -y
     sudo apt autoremove -y
     sudo apt upgrade -y
-    sudo apt install -y --install-recommends figlet iftop landscape-common lolcat mytop toilet
+    sudo apt install -y --install-recommends figlet landscape-common lolcat toilet
 
     echo ""
     echo "${CRED}${BLD}==========> Configuring SSH VIA PUBLIC KEY ==========${RST}"
@@ -1346,6 +1369,7 @@ if [[ "$SSHKEYSW" = 1 ]]; then
     echo "${CWHT}${BLD}            guesses as to the exact commands you need to connect are the following:${RST}"
     echo "${CORG}${BLD}               ssh ${USER}@${INTERNALIP} -p ${SSHPORT} -i ~/.ssh/id_rsa ${CWHT}(local network)${RST}"
     echo "${CORG}${BLD}               ssh ${USER}@${EXTERNALIP} -p ${SSHPORT} -i ~/.ssh/id_rsa ${CWHT}(remote connection)${RST}"
+    echo "${CORG}${BLD}               mosh -p ${MOSHPORT} ${USER}@${EXTERNALIP} --ssh="ssh -i ~/.ssh/id_rsa -p ${SSHPORT}"\"${CWHT}${RST}"
     echo ""
     echo "${CWHT}${BLD}            If this throws errors about permissions, run the following commands ${CLBL}on your personal computer${CWHT}:${RST}"
     echo "${CORG}${BLD}               chmod 0700 ~/.ssh${RST}"
@@ -1359,7 +1383,8 @@ if [[ "$SSHKEYSW" = 1 ]]; then
     echo "${CORG}${BLD}                   HostName ${EXTERNALIP}${RST}"
     echo "${CORG}${BLD}                   Port ${SSHPORT}${RST}"
     echo "${CORG}${BLD}                   IdentityFile ~/.ssh/id_rsa${RST}"
-    echo "${CWHT}${BLD}            Once you've done this, you can connect with nothing more than ${CORG}ssh ${LOCALHOSTNAME}${CWHT}!${RST}"
+    echo "${CWHT}${BLD}            Once you've done this, you can connect with nothing more than ${CORG}ssh ${LOCALHOSTNAME}${CWHT}${RST}"
+    echo "${CWHT}${BLD}            or ${CORG}mosh -p ${MOSHPORT} ${LOCALHOSTNAME}${CWHT}.${RST}"
     echo ""
     read -r -p "${CORG}${BLD}            Press any key to continue (or wait 10 seconds), or press ${CWHT}CTRL+C${CORG} to exit the script... ${RST}" -n 1 -t 10 -s
     echo ""
@@ -1411,6 +1436,13 @@ if [[ "$NECESSARYSW" = 1 ]]; then
         sudo apt install -y --install-recommends linux-headers-generic
     fi
 
+    # REMOVE UNNECESSARY OR RISKY SOFTWARE
+    # This is done one-package-per-command because otherwise if a single program is not installed,
+    # and thus can't be uninstalled, it will cause the removal of all the others to fail.
+    sudo apt remove -y telnet
+    sudo apt remove -y ftp
+
+
     echo "${CGRN}${BLD}==========> NECESSARY SOFTWARE installation finished.${RST}"
     echo ""
 else
@@ -1429,7 +1461,7 @@ if [[ "$USEFULSW" = 1 ]]; then
     sudo apt update -y
     sudo apt autoremove -y
     sudo apt upgrade -y
-    sudo apt install -y --install-recommends bzip2 exfat-fuse exfat-utils lbzip2 mc moreutils most neofetch p7zip p7zip-full pbzip2 python3-pip rename unzip w3m zip
+    sudo apt install -y --install-recommends bzip2 exfat-fuse exfat-utils lbzip2 mc moreutils most neofetch p7zip p7zip-full pbzip2 python3-pip rename tldr unzip w3m zip
 
     # INSTALL ON DEBIAN ONLY
     if [[ "$OS" = "Debian" ]]; then
@@ -1464,8 +1496,10 @@ if [[ "$SERVERSW" = 1 ]]; then
     sudo apt update -y
     sudo apt upgrade -y
 
-    sudo apt install -y --install-recommends acct apachetop apt-listchanges apticron byobu ccze cpulimit discus fancontrol figlet hddtemp htop hwinfo iftop iotop iptraf iptstate iselect lm-sensors locate lolcat net-tools nethogs nload nmap nmon powertop rng-tools screen screenie smartmontools speedometer speedtest-cli tmux traceroute unattended-upgrades vnstat w3m whowatch
+    sudo apt install -y --install-recommends acct apachetop apt-listchanges apticron byobu ccze cpulimit discus fancontrol figlet goaccess hddtemp htop hwinfo iftop iotop iptraf iptstate iselect lm-sensors lnav locate lolcat mosh mytop net-tools nethogs nload nmap nmon powertop rng-tools screen screenie smartmontools speedometer speedtest-cli tmux traceroute unattended-upgrades vnstat w3m whowatch
 
+
+    # THIS IS INSTALLED ALONE BECAUSE --install-recommends PULLS IN FAR TO MUCH USELESS SOFTWARE
     sudo apt install -y sysstat
 
     # INSTALL ON EVERYTHING BUT DEBIAN
@@ -1500,6 +1534,55 @@ if [[ "$SERVERSW" = 1 ]]; then
 
     # SHORTEN REPORTING INTERVAL FROM 10 TO 2 MINUTES
     configLine "^[ ]*5-55\/10.*$"  "*/2 * * * * root command -v debian-sa1 > /dev/null \&\& debian-sa1 1 1"  /etc/cron.d/sysstat
+
+
+    ####################
+    # INSTALL GOACCESS
+    ####################
+
+    # INSTALL GEOIP DATABASE
+    mkdir -p ~/bin/GeoIP
+    cd  ~/bin/GeoIP
+    wget -N https://geolite.maxmind.com/download/geoip/database/GeoLite2-City.tar.gz
+    tar --strip-components=1 -zxf GeoLite2-City.tar.gz
+
+    # INSTALL GOACCESS DEPENDENCIES
+    sudo apt update -y
+    sudo apt install -y --install-recommends libmaxminddb0 libmaxminddb-dev mmdb-bin libncursesw5-dev libtokyocabinet-dev
+
+    # DOWNLOAD GOACCESS SOURCE TARBALL
+    mkdir -p ~/tmp
+    cd ~/tmp
+    wget https://tar.goaccess.io/goaccess-1.3.tar.gz
+    tar -xzvf goaccess-1.3.tar.gz
+    cd goaccess-1.3/
+    ./configure --enable-utf8 --enable-geoip=mmdb --enable-tcb=btree --with-getline --with-openssl
+    make
+    sudo make install
+
+    # CREATE GOACCESS CONFIG FILE FROM TEMPLATE
+    sudo cp /usr/local/etc/goaccess/goaccess.conf /usr/local/etc/goaccess.conf
+
+    ##### MODIFY CONFIG FILE
+
+    # Prepare list of excluded IPs from whitelisted IPs
+    EXCLUDEIPS="${WHITELISTEDIPS}"
+    # Change CIDR notation to ranges separated by dashes (only works for /8, /16 and /24).
+    EXCLUDEIPS=$(echo "${EXCLUDEIPS}" | sed -r 's#([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})/8#\1.\2.\3.1-\1.255.255.254#gm')
+    EXCLUDEIPS=$(echo "${EXCLUDEIPS}" | sed -r 's#([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})/16#\1.\2.\3.1-\1.\2.255.254#gm')
+    EXCLUDEIPS=$(echo "${EXCLUDEIPS}" | sed -r 's#([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})/24#\1.\2.\3.1-\1.\2.\3.254#gm')
+    # Insert '\n' and 'exclude-ip' before each ip
+    EXCLUDEIPS=$(echo "${EXCLUDEIPS}" | sed -r 's/(^| )/\nexclude-ip /gm')
+
+    # Modify goaccess config file values
+    configLine "^[# ]*log-format COMBINED.*$"    "log-format COMBINED" /usr/local/etc/goaccess.conf >/dev/null 2>&1
+    configLine "^[# ]*agent-list false.*$"       "agent-list true"     /usr/local/etc/goaccess.conf >/dev/null 2>&1
+    configLine "^[# ]*exclude-ip 127.0.0.1.*$"   "$EXCLUDEIPS"         /usr/local/etc/goaccess.conf >/dev/null 2>&1
+    configLine "^[# ]*log-format COMBINED.*$"    "log-format COMBINED" /usr/local/etc/goaccess.conf >/dev/null 2>&1
+    configLine "^[# ]*ignore-panel REFERRERS.*$" "#ignore-panel REFERRERS" /usr/local/etc/goaccess.conf >/dev/null 2>&1
+    configLine "^[# ]*ignore-panel KEYPHRASES.*$" "#ignore-panel KEYPHRASES" /usr/local/etc/goaccess.conf >/dev/null 2>&1
+    configLine "^[# ]*ignore-referer \*.domain.com.*$" "ignore-referer ${SERVERNAME}\\nignore-referer ${SERVERALIAS}" /usr/local/etc/goaccess.conf >/dev/null 2>&1
+    configLine "^[# ]*geoip-database \/usr\/local\/share\/GeoIP\/GeoLiteCity.dat.*$"  "geoip-database /home/corpadmin/bin/GeoIP/GeoLite2-City.mmdb" /usr/local/etc/goaccess.conf >/dev/null 2>&1
 
 
     ####################
@@ -1568,6 +1651,34 @@ else
 fi
 
 
+
+#######################################################
+# MODIFY SERVERS IF THEY'RE VIRTUAL (VPS) +++++
+#######################################################
+if [[ "$VIRTUALSRV" = 1 ]]; then
+
+    echo ""
+    echo "${CLBL}${BLD}==========> Configuring VIRTUAL SERVER...${RST}"
+
+    sudo apt update -y
+    sudo apt upgrade -y
+
+    # REMOVE UNNECESSARY OR RISKY SOFTWARE
+    # This is done one-package-per-command because otherwise if a single program
+    # is not installed, it will cause the removal of all the others to fail. +++++
+    sudo apt remove -y - f fancontrol thermald smartmontools lm-sensors powertop hddtemp psensor
+
+    # libsensors4
+
+    sudo apt autoremove -y
+
+
+    echo "${CGRN}${BLD}==========> VIRTUAL SERVER configured.${RST}"
+    echo ""
+else
+    echo "${CORG}${BLD}==========> Skipping configuration of VIRTUAL SERVER...${RST}"
+
+    fi
 
 #######################################################
 # COMPLETELY DISABLE IPV6 SUPPORT ON HOST OS IF DESIRED
@@ -2057,7 +2168,7 @@ if [[ "$CQPWEBSW" = 1 ]]; then
     configLine "^[; \t]*mysqli.allow_local_infile[ =].*" "mysqli.allow_local_infile = On"  php.ini
 #     configLine "^[; \t]*extension=mysqli.*$"             "extension=mysqli"                php.ini
 #     configLine "^[; \t]*extension=gd2.*$"                "extension=gd2"                   php.ini
-    configLine "^[; \t]*expose_php[ =].*"                "expose_php = off"                php.ini
+    configLine "^[; \t]*expose_php[ =].*"                "expose_php = Off"                php.ini
 
 
     ####################
@@ -3514,7 +3625,7 @@ if [[ "$SECURITYSW" = 1 ]]; then
     sudo apt update -y
     sudo apt autoremove -y
     sudo apt upgrade -y
-    sudo apt install -y --install-recommends chkrootkit logwatch lynis
+    sudo apt install -y --install-recommends chkrootkit logwatch lynis rkhunter
 
     echo ""
     echo "${CWHT}${BLD}            To audit your system, run ${CORG}sudo lynis audit system --quick${CWHT} or simply ${CORG}audit${CWHT}.${RST}"
@@ -3528,7 +3639,7 @@ if [[ "$SECURITYSW" = 1 ]]; then
     echo ""
     echo "${CLBL}==========> Removing insecure software...${RST}"
 
-    sudo apt-get --purge remove xinetd nis yp-tools tftpd atftpd tftpd-hpa telnetd rsh-server rsh-redone-server
+    sudo apt remove --purge -y xinetd nis yp-tools tftpd atftpd tftpd-hpa telnetd rsh-server rsh-redone-server
 
     ####################
     # HARDEN SYSCTL SETTINGS
@@ -3625,12 +3736,13 @@ if [[ "$UFWSW" = 1 ]]; then
     # Finally, configure various other ports. Feel free to comment out the ones
     # you don't need. Values: allow (allow), limit (block after 6 failed attempts
     # in 30 seconds), reject (block with notification), deny (block silently).
-    if [[ ! -z "${SSHPORT}" ]];   then sudo ufw limit "${SSHPORT}"   comment 'SSH port'; fi
-    if [[ ! -z "${SMTPPORT}" ]];  then sudo ufw limit "${SMTPPORT}"  comment 'SMTP port'; fi
-    if [[ ! -z "${RSYNCPORT}" ]]; then sudo ufw limit "${RSYNCPORT}" comment 'RSYNC port'; fi
-    if [[ ! -z "${IMAPSPORT}" ]]; then sudo ufw limit "${IMAPSPORT}" comment 'IMAPS port'; fi
-    if [[ ! -z "${POP3PORT}" ]];  then sudo ufw limit "${POP3PORT}"  comment 'POP3 port'; fi
-    if [[ ! -z "${IMAPPORT}" ]];  then sudo ufw limit "${IMAPPORT}"  comment 'IMAP port'; fi
+    if [[ ! -z "${SSHPORT}" ]];   then sudo ufw limit "${SSHPORT}"      comment 'SSH port'; fi
+    if [[ ! -z "${MOSHPORT}" ]];  then sudo ufw limit "${MOSHPORT}/udp" comment 'MOSH port'; fi
+    if [[ ! -z "${SMTPPORT}" ]];  then sudo ufw limit "${SMTPPORT}"     comment 'SMTP port'; fi
+    if [[ ! -z "${RSYNCPORT}" ]]; then sudo ufw limit "${RSYNCPORT}"    comment 'RSYNC port'; fi
+    if [[ ! -z "${IMAPSPORT}" ]]; then sudo ufw limit "${IMAPSPORT}"    comment 'IMAPS port'; fi
+    if [[ ! -z "${POP3PORT}" ]];  then sudo ufw limit "${POP3PORT}"     comment 'POP3 port'; fi
+    if [[ ! -z "${IMAPPORT}" ]];  then sudo ufw limit "${IMAPPORT}"     comment 'IMAP port'; fi
 
     # Turn on logging, reload and enable UFW
     sudo ufw logging on
@@ -3646,6 +3758,8 @@ if [[ "$UFWSW" = 1 ]]; then
     echo ""
     echo "${CRED}${BLD}            NOTE: Your SSH port is ${CWHT}${SSHPORT}${CRED}. If you haven't done so already, running this script ${RST}"
     echo "${CRED}${BLD}                  again, but with ${CWHT}SSHPWDSW=1${CRED}, will configure the server for SSH using this port.${RST}"
+    echo ""
+    echo "${CRED}${BLD}                  Your MOSH (improved SSH) UDP port is ${CWHT}${MOSHPORT}${CRED}.${RST}"
     echo ""
     read -r -p "${CORG}${BLD}            Press any key to continue (or wait 10 seconds)... ${RST}" -n 1 -t 10 -s
     echo ""
@@ -3735,6 +3849,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		logencoding = auto
 		mode = normal
 		filter = %(__name__)s[mode=%(mode)s]
+		dbpurgeage  = 648000
 
 		############### ACTIONS ###############
 		destemail = ${ADMINMAILADDR}
@@ -3781,7 +3896,8 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port    = ssh,${SSHPORT}
 		logpath = %(sshd_log)s
 		backend = %(sshd_backend)s
-		bantime = 1h
+		bantime = 24h
+		findtime  = 12h
 
 		[dropbear]
 		enabled  = true
@@ -3789,6 +3905,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		logpath  = %(dropbear_log)s
 		backend  = %(dropbear_backend)s
 		bantime  = 72h
+		findtime  = 12h
 
 
 		##### HTTP servers ######
@@ -3797,12 +3914,15 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_error_log)s
+		bantime  = 72h
+		findtime  = 12h
 
 		[apache-badbots]
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_access_log)s
 		bantime  = 72h
+		findtime  = 12h
 		maxretry = 1
 
 		[apache-noscript]
@@ -3810,6 +3930,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port     = http,https
 		logpath  = %(apache_error_log)s
 		bantime  = 72h
+		findtime  = 12h
 		maxretry = 1
 
 		[apache-overflows]
@@ -3817,6 +3938,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port     = http,https
 		logpath  = %(apache_error_log)s
 		bantime  = 72h
+		findtime  = 12h
 		maxretry = 2
 
 		[apache-nohome]
@@ -3824,6 +3946,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port     = http,https
 		logpath  = %(apache_error_log)s
 		bantime  = 72h
+		findtime  = 12h
 		maxretry = 2
 
 		[apache-botsearch]
@@ -3831,12 +3954,15 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port     = http,https
 		logpath  = %(apache_error_log)s
 		bantime  = 72h
+		findtime  = 12h
 		maxretry = 2
 
 		[apache-fakegooglebot]
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_access_log)s
+		bantime  = 72h
+		findtime  = 12h
 		maxretry = 1
 		ignorecommand = %(ignorecommands_dir)s/apache-fakegooglebot <ip>
 
@@ -3844,6 +3970,8 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_error_log)s
+		bantime  = 72h
+		findtime  = 12h
 		maxretry = 2
 
 		[apache-shellshock]
@@ -3851,6 +3979,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port     = http,https
 		logpath  = %(apache_error_log)s
 		bantime  = 72h
+		findtime  = 12h
 		maxretry = 1
 
 		# BAN ATTACKERS THAT TRY TO USE PHP'S URL-FOPEN() FUNCTIONALITY
@@ -3861,6 +3990,8 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		enabled = true
 		port    = http,https
 		logpath = %(apache_access_log)s
+		bantime  = 72h
+		findtime  = 12h
 
 
 		###### Web Applications ######
@@ -3881,6 +4012,8 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port    = smtp,465,submission,${SMTPPORT},${POP3PORT},${IMAPPORT}
 		logpath = %(postfix_log)s
 		backend = %(postfix_backend)s
+		bantime  = 72h
+		findtime  = 12h
 
 		[postfix-rbl]
 		enabled  = true
@@ -3888,6 +4021,8 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port     = smtp,465,submission,${SMTPPORT},${POP3PORT},${IMAPPORT}
 		logpath  = %(postfix_log)s
 		backend  = %(postfix_backend)s
+		bantime  = 72h
+		findtime  = 12h
 		maxretry = 1
 
 		[sendmail-auth]
@@ -3919,6 +4054,8 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		# "WARN" LEVEL BUT OVERALL AT THE SMALLER FILESIZE.
 		logpath  = %(postfix_log)s
 		backend  = %(postfix_backend)s
+		bantime  = 72h
+		findtime  = 12h
 
 
 		###### JAIL FOR MORE EXTENDED BANNING OF PERSISTENT ABUSERS ######
@@ -3933,7 +4070,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		enabled   = true
 		logpath   = /var/log/fail2ban.log
 		banaction = %(banaction_allports)s
-		bantime   = 1w
+		bantime   = 26w
 		findtime  = 1d
 
 
@@ -3946,12 +4083,16 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		banaction = %(banaction_allports)s
 		logpath   = %(syslog_authpriv)s
 		backend   = %(syslog_backend)s
+		bantime  = 72h
+		findtime  = 12h
 
 		[phpmyadmin-syslog]
 		enabled = true
 		port    = http,https
 		logpath = %(syslog_authpriv)s
 		backend = %(syslog_backend)s
+		bantime  = 72h
+		findtime  = 12h
 
 		[zoneminder]
 		# ZONEMINDER HTTP/HTTPS WEB INTERFACE AUTH
@@ -3959,6 +4100,8 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		enabled = true
 		port    = http,https
 		logpath = %(apache_error_log)s
+		bantime  = 72h
+		findtime  = 12h
 
 EOF
 
@@ -4068,9 +4211,9 @@ if [[ "$APACHESECSW" = 1 ]]; then
     # Read values into new variable
     EVASIVE_WHITELISTEDIPS="${WHITELISTEDIPS}"
     # Change CIDR notation to asterisks (only works for /8, /16 and /24.
-    EVASIVE_WHITELISTEDIPS=$(echo "${EVASIVE_WHITELISTEDIPS}" | sed -r 's/([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\/24/*.*.*/gm')
+    EVASIVE_WHITELISTEDIPS=$(echo "${EVASIVE_WHITELISTEDIPS}" | sed -r 's/([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\/8/*.*.*/gm')
     EVASIVE_WHITELISTEDIPS=$(echo "${EVASIVE_WHITELISTEDIPS}" | sed -r 's/([0-9]{1,3})\.([0-9]{1,3})\/16/*.*/gm')
-    EVASIVE_WHITELISTEDIPS=$(echo "${EVASIVE_WHITELISTEDIPS}" | sed -r 's/([0-9]{1,3})\/8/*/gm')
+    EVASIVE_WHITELISTEDIPS=$(echo "${EVASIVE_WHITELISTEDIPS}" | sed -r 's/([0-9]{1,3})\/24/*/gm')
     # INSERT 'DOSWhitelist' BEFORE EACH IP AND \n AFTER EACH ONE
     EVASIVE_WHITELISTEDIPS=$(echo "${EVASIVE_WHITELISTEDIPS}" | sed -r 's/(^| )/      DOSWhitelist        /gm')
     EVASIVE_WHITELISTEDIPS=$(echo "${EVASIVE_WHITELISTEDIPS}" | sed -r 's/([0-9*])($| )/\1\n/gm')
