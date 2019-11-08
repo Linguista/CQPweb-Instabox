@@ -3,8 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-11-04
-# VERSION:  82
+# DATE:     2019-11-07
+# VERSION:  83
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes an install of certain versions of Ubuntu or Debian and sets up Open
@@ -23,6 +23,15 @@ SCRIPTNAME="cqpweb-instabox.sh"
 #              no warranties. Bug reports are most welcome!
 
 # CHANGE LOG:
+#
+# v83
+# - Modernized and further hardened SSH configuration.
+# - Fixed the ancient (2013) apache_badbots version that comes with Ubuntu's fail2ban version. New config
+#   file is now taken from github, modified and installed.
+# - Hardened a good number of sysctl.conf settings.
+# - Added GRUB method of disabling ipv6.
+# - Modified some php.ini settings. Among other things, errors are now logged to /var/log/php_errors.log
+# - Removed MOSH. Great idea, unreliable implementation.
 #
 # v82
 # - Added two new installation options, `vserver` and `vserverdeluxe`, for virtual servers (VPS).
@@ -238,13 +247,13 @@ TURNDEBUGON=0                # Set CQPweb to print debug messages.
 CORPDICKENS=0       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
 
 # ADDITIONAL SYSTEM SOFTWARE AND SYSTEM OPTIONS
-    MAILSW=0        # Install and configure the Postfix mail server.
-SECURITYSW=0        # Install general security software. Highly recommended for server install.
-     UFWSW=0        # Install and configure Universal FireWall (UFW). Important for security!
-     UPSSW=0        # Install and configure software for APC BackUPS Pro 900 UPS (051d:0002)
-FAIL2BANSW=0        # Install and configure fail2ban. Important for security! But install this last, after you've confirmed everything works.
+     MAILSW=0       # Install and configure the Postfix mail server.
+ SECURITYSW=0       # Install general security software. Highly recommended for server install.
+      UFWSW=0       # Install and configure Universal FireWall (UFW). Important for security!
+      UPSSW=0       # Install and configure software for APC BackUPS Pro 900 UPS (051d:0002)
+ FAIL2BANSW=0       # Install and configure fail2ban. Important for security! But install this last, after you've confirmed everything works.
 WHITELISTEDIPS="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16" # IP addresses to whitelist (never ban) in fail2ban. Separate with space.
-APACHESECSW=1       # Install the Apache mod_security and mod_evasive security modules.
+APACHESECSW=0       # Install the Apache mod_security and mod_evasive security modules.
 DISABLEIPV6=0       # Completely disable ipv6 support in the host OS.
 
 # ADDITIONAL LINGUISTIC SOFTWARE: HEADLESS SERVER OR GUI
@@ -289,7 +298,6 @@ PERSONALMAILADDR="YOUR_INFO_HERE"      # YOUR PERSONAL E-MAIL ADDRESS. IF YOU WA
  IMAPPORT=993
  POP3PORT=995
   SSHPORT=YOUR_INFO_HERE # CHOOSE A RANDOM HIGH PORT FOR THIS (10000-60000 IS A GOOD RANGE)
- MOSHPORT=YOUR_INFO_HERE # CHOOSE A RANDOM HIGH PORT FOR THIS (10000-60000 IS A GOOD RANGE)
 
 ################################################################################
 # TIP: ENABLE VMWARE SHARED FOLDERS ON HEADLESS UBUNTU SERVER
@@ -1215,13 +1223,15 @@ if [[ "$SSHPWDSW" = 1 ]]; then
 
         # RECONFIGURE SSHD_CONFIG FILE
         # Much taken from here: https://stribika.github.io/2015/01/04/secure-secure-shell.html
+        configLine "^[# ]*AllowAgentForwarding.*$"            "AllowAgentForwarding no" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*AllowTcpForwarding.*$"              "AllowTcpForwarding no" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*AllowUsers.*$"                      "AllowUsers ${USER}" /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*AllowGroups.*$"                     "AllowGroups ${USER}" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*AuthorizedKeysFile.*$"              "AuthorizedKeysFile %h/.ssh/authorized_keys" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*ChallengeResponseAuthentication.*$" "ChallengeResponseAuthentication no" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*Ciphers.*$"                         "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*ClientAliveCountMax.*$"             "ClientAliveCountMax 2" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*ClientAliveInterval.*$"             "ClientAliveInterval 300" /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*ClientAliveInterval.*$"             "ClientAliveInterval 10" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*Compression.*$"                     "Compression no" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*DenyGroups.*$"                      "DenyGroups root" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*DenyUsers.*$"                       "DenyUsers root" /etc/ssh/sshd_config >/dev/null 2>&1
@@ -1230,7 +1240,9 @@ if [[ "$SSHPWDSW" = 1 ]]; then
         configLine "^[# ]*KexAlgorithms.*$"                   "KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*LogLevel.*$"                        "LogLevel VERBOSE" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*LoginGraceTime.*$"                  "LoginGraceTime 20" /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*MACs.*$"                            "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*MaxAuthTries.*$"                    "MaxAuthTries 3" /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*MaxSessions.*$"                     "MaxSessions 4" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*PasswordAuthentication.*$"          "PasswordAuthentication yes" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*PermitEmptyPasswords.*$"            "PermitEmptyPasswords no" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*PermitRootLogin.*$"                 "PermitRootLogin no" /etc/ssh/sshd_config >/dev/null 2>&1
@@ -1238,23 +1250,25 @@ if [[ "$SSHPWDSW" = 1 ]]; then
         configLine "^[# ]*PrintLastLog.*$"                    "PrintLastLog yes" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*PrintMotd.*$"                       "PrintMotd yes" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*Protocol.*$"                        "Protocol 2" /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*ClientAliveCountMax.*$"             "ClientAliveCountMax 3" /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*ClientAliveInterval.*$"             "ClientAliveInterval 5" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*StrictModes.*$"                     "StrictModes yes" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*TCPKeepAlive.*$"                    "TCPKeepAlive yes" /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*TCPKeepAlive.*$"                    "TCPKeepAlive no" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*UsePAM.*$"                          "UsePAM no" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*X11Forwarding.*$"                   "X11Forwarding no" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*Protocol.*$"                        "Protocol 2" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*MACs.*$"                            "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" /etc/ssh/sshd_config >/dev/null 2>&1
+
         # DON'T SORT THESE NEXT THREE ENTRIES
         configLine "^[# ]*HostKey.*$"                         "" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*HostKey \/etc\/ssh\/ssh_host_ed25519.*$" "HostKey /etc/ssh/ssh_host_ed25519_key" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*HostKey \/etc\/ssh\/ssh_host_rsa.*$" "HostKey /etc/ssh/ssh_host_rsa_key" /etc/ssh/sshd_config >/dev/null 2>&1
 
+
         # RECONFIGURE SSH_CONFIG FILE
+        configLine "^[# ]*Ciphers.*$"                         "    Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" /etc/ssh/ssh_config  >/dev/null 2>&1
+        configLine "^[# ]*GSSAPIAuthentication.*$"            "    GSSAPIAuthentication no" /etc/ssh/ssh_config >/dev/null 2>&1
         configLine "^[# ]*KexAlgorithms.*$"                   "    KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" /etc/ssh/ssh_config >/dev/null 2>&1
-        configLine "^[# ]*ChallengeResponseAuthentication.*$" "    ChallengeResponseAuthentication no" /etc/ssh/ssh_config >/dev/null 2>&1
-        configLine "^[# ]*Ciphers.*$"                         "    Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" /etc/ssh/ssh_config        >/dev/null 2>&1
         configLine "^[# ]*MACs.*$"                            "    MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" /etc/ssh/ssh_config  >/dev/null 2>&1
-        configLine "^[# ]*UseRoaming.*$"                      "    UseRoaming no" /etc/ssh/ssh_config >/dev/null 2>&1
+
 
         # RESTORE BACKUP OF /etc/profile IF IT EXISTS, ELSE MAKE A BACKUP
         if [[ -f /etc/profile.BAK ]]; then
@@ -1302,7 +1316,6 @@ EOF
         echo "${CWHT}${BLD}            My best guesses as to the exact commands you need to connect are the following:${RST}"
         echo "${CORG}${BLD}               ssh ${USER}@${INTERNALIP} -p ${SSHPORT} ${CWHT}(local network)${RST}"
         echo "${CORG}${BLD}               ssh ${USER}@${EXTERNALIP} -p ${SSHPORT} ${CWHT}(remote connection)${RST}"
-        echo "${CORG}${BLD}               mosh -p ${MOSHPORT} --ssh=\"ssh -p ${SSHPORT}\" ${USER}@${EXTERNALIP}${CWHT}${RST}"
         echo "${CWHT}${BLD}            Do configure your router to forward ports ${SSHPORT} and ${MOSHPORT} to the server's local IP address${RST}"
         echo "${CWHT}${BLD}            (probably ${CORG}${INTERNALIP}${CWHT}). Note that root access and empty passwords have been disabled.${RST}"
         echo ""
@@ -1351,14 +1364,14 @@ if [[ "$SSHKEYSW" = 1 ]]; then
     echo "${CRED}${BLD}==========> Configuring SSH VIA PUBLIC KEY ==========${RST}"
 
     # RECONFIGURE SSHD_CONFIG FILE
-    configLine "^[# ]*PubkeyAuthentication.*$"                "PubkeyAuthentication yes" /etc/ssh/sshd_config
-    configLine "^[# ]*PasswordAuthentication.*$"              "PasswordAuthentication no" /etc/ssh/sshd_config
+    configLine "^[# ]*PasswordAuthentication.*$"              "PasswordAuthentication no" /etc/ssh/sshd_config >/dev/null >/dev/null 2>&1
+    configLine "^[# ]*PubkeyAuthentication.*$"                "PubkeyAuthentication yes" /etc/ssh/sshd_config >/dev/null >/dev/null 2>&1
 
     # RECONFIGURE SSH_CONFIG FILE
-    configLine "^[# ]*PasswordAuthentication.*$"          "    PasswordAuthentication no" /etc/ssh/ssh_config
-    configLine "^[# ]*ChallengeResponseAuthentication.*$" "    ChallengeResponseAuthentication no" /etc/ssh/ssh_config
-    configLine "^[# ]*PubkeyAuthentication.*$"            "    PubkeyAuthentication yes" /etc/ssh/ssh_config
-    configLine "^[# ]*HostKeyAlgorithms.*$"               "    HostKeyAlgorithms ssh-ed25519-cert-v01@openssh.com,ssh-rsa-cert-v01@openssh.com,ssh-ed25519,ssh-rsa" /etc/ssh/ssh_config
+    configLine "^[# ]*ChallengeResponseAuthentication.*$" "    ChallengeResponseAuthentication no" /etc/ssh/ssh_config >/dev/null >/dev/null 2>&1
+    configLine "^[# ]*HostKeyAlgorithms.*$"               "    HostKeyAlgorithms ssh-ed25519-cert-v01@openssh.com,ssh-rsa-cert-v01@openssh.com,ssh-ed25519,ssh-rsa" /etc/ssh/ssh_config >/dev/null 2>&1
+    configLine "^[# ]*PasswordAuthentication.*$"          "    PasswordAuthentication no" /etc/ssh/ssh_config >/dev/null >/dev/null 2>&1
+    configLine "^[# ]*PubkeyAuthentication.*$"            "    PubkeyAuthentication yes" /etc/ssh/ssh_config >/dev/null >/dev/null 2>&1
 
     # RESTART SSH SERVICE
     sudo systemctl restart ssh
@@ -1369,7 +1382,6 @@ if [[ "$SSHKEYSW" = 1 ]]; then
     echo "${CWHT}${BLD}            guesses as to the exact commands you need to connect are the following:${RST}"
     echo "${CORG}${BLD}               ssh ${USER}@${INTERNALIP} -p ${SSHPORT} -i ~/.ssh/id_rsa ${CWHT}(local network)${RST}"
     echo "${CORG}${BLD}               ssh ${USER}@${EXTERNALIP} -p ${SSHPORT} -i ~/.ssh/id_rsa ${CWHT}(remote connection)${RST}"
-    echo "${CORG}${BLD}               mosh -p ${MOSHPORT} ${USER}@${EXTERNALIP} --ssh="ssh -i ~/.ssh/id_rsa -p ${SSHPORT}"\"${CWHT}${RST}"
     echo ""
     echo "${CWHT}${BLD}            If this throws errors about permissions, run the following commands ${CLBL}on your personal computer${CWHT}:${RST}"
     echo "${CORG}${BLD}               chmod 0700 ~/.ssh${RST}"
@@ -1383,8 +1395,7 @@ if [[ "$SSHKEYSW" = 1 ]]; then
     echo "${CORG}${BLD}                   HostName ${EXTERNALIP}${RST}"
     echo "${CORG}${BLD}                   Port ${SSHPORT}${RST}"
     echo "${CORG}${BLD}                   IdentityFile ~/.ssh/id_rsa${RST}"
-    echo "${CWHT}${BLD}            Once you've done this, you can connect with nothing more than ${CORG}ssh ${LOCALHOSTNAME}${CWHT}${RST}"
-    echo "${CWHT}${BLD}            or ${CORG}mosh -p ${MOSHPORT} ${LOCALHOSTNAME}${CWHT}.${RST}"
+    echo "${CWHT}${BLD}            Once you've done this, you can connect with nothing more than ${CORG}ssh ${LOCALHOSTNAME}${CWHT}${RST}."
     echo ""
     read -r -p "${CORG}${BLD}            Press any key to continue (or wait 10 seconds), or press ${CWHT}CTRL+C${CORG} to exit the script... ${RST}" -n 1 -t 10 -s
     echo ""
@@ -1437,10 +1448,7 @@ if [[ "$NECESSARYSW" = 1 ]]; then
     fi
 
     # REMOVE UNNECESSARY OR RISKY SOFTWARE
-    # This is done one-package-per-command because otherwise if a single program is not installed,
-    # and thus can't be uninstalled, it will cause the removal of all the others to fail.
-    sudo apt remove -y telnet
-    sudo apt remove -y ftp
+    sudo apt remove --purge -y -f telnet ftp
 
 
     echo "${CGRN}${BLD}==========> NECESSARY SOFTWARE installation finished.${RST}"
@@ -1496,7 +1504,7 @@ if [[ "$SERVERSW" = 1 ]]; then
     sudo apt update -y
     sudo apt upgrade -y
 
-    sudo apt install -y --install-recommends acct apachetop apt-listchanges apticron byobu ccze cpulimit discus fancontrol figlet goaccess hddtemp htop hwinfo iftop iotop iptraf iptstate iselect lm-sensors lnav locate lolcat mosh mytop net-tools nethogs nload nmap nmon powertop rng-tools screen screenie smartmontools speedometer speedtest-cli tmux traceroute unattended-upgrades vnstat w3m whowatch
+    sudo apt install -y --install-recommends acct apachetop apt-listchanges apticron byobu ccze cpulimit discus fancontrol figlet goaccess hddtemp htop hwinfo iftop iotop iptraf iptstate iselect lm-sensors lnav locate lolcat mytop net-tools nethogs nload nmap nmon powertop rng-tools screen screenie smartmontools speedometer speedtest-cli tmux traceroute unattended-upgrades vnstat w3m whowatch
 
 
     # THIS IS INSTALLED ALONE BECAUSE --install-recommends PULLS IN FAR TO MUCH USELESS SOFTWARE
@@ -1506,6 +1514,12 @@ if [[ "$SERVERSW" = 1 ]]; then
     if ! [[ "$OS" = "Debian" ]]; then
         sudo apt install -y --install-recommends mytop
     fi
+
+
+    ####################
+    # DISABLE ROOT ACCOUNT. TO ENABLE IT AGAIN: sudo passwd -u root
+    ####################
+#     sudo passwd -l root
 
 
     ####################
@@ -1653,7 +1667,7 @@ fi
 
 
 #######################################################
-# MODIFY SERVERS IF THEY'RE VIRTUAL (VPS) +++++
+# MODIFY SERVERS IF THEY'RE VIRTUAL (VPS)
 #######################################################
 if [[ "$VIRTUALSRV" = 1 ]]; then
 
@@ -1666,12 +1680,8 @@ if [[ "$VIRTUALSRV" = 1 ]]; then
     # REMOVE UNNECESSARY OR RISKY SOFTWARE
     # This is done one-package-per-command because otherwise if a single program
     # is not installed, it will cause the removal of all the others to fail. +++++
-    sudo apt remove -y - f fancontrol thermald smartmontools lm-sensors powertop hddtemp psensor
-
-    # libsensors4
-
+    sudo apt remove --purge -y -f fancontrol thermald smartmontools lm-sensors powertop hddtemp psensor libsensors4
     sudo apt autoremove -y
-
 
     echo "${CGRN}${BLD}==========> VIRTUAL SERVER configured.${RST}"
     echo ""
@@ -1688,19 +1698,10 @@ if [[ "$DISABLEIPV6" = 1 ]]; then
     echo ""
     echo "${CLBL}${BLD}==========> Disabling IPV6 SUPPORT...${RST}"
 
-    ##### RESTORE BACKUP OF /etc/sysctl.conf IF IT EXISTS, ELSE MAKE A BACKUP
-    if [[ -f /etc/sysctl.conf.BAK ]]; then
-        sudo rm /etc/sysctl.conf
-        sudo cp /etc/sysctl.conf.BAK /etc/sysctl.conf
-    else
-        sudo cp /etc/sysctl.conf /etc/sysctl.conf.BAK
-    fi
-
     # ADD NECESSARY VALUES TO /etc/sysctl.conf
     configLine "^[ ]*net.ipv6.conf.all.disable_ipv6.*$"     "net.ipv6.conf.all.disable_ipv6=1"     /etc/sysctl.conf >/dev/null 2>&1
     configLine "^[ ]*net.ipv6.conf.default.disable_ipv6.*$" "net.ipv6.conf.default.disable_ipv6=1" /etc/sysctl.conf >/dev/null 2>&1
     configLine "^[ ]*net.ipv6.conf.lo.disable_ipv6.*$"      "net.ipv6.conf.lo.disable_ipv6=1"      /etc/sysctl.conf >/dev/null 2>&1
-
 
     ##### CREATE SCRIPT TO MAKE SURE THESE KERNEL PARAMS ARE READ AT BOOT TIME
 
@@ -1743,6 +1744,29 @@ EOF
     Acquire::ForceIPv4 "true";
 
 EOF
+
+    #####
+    # CHANGE GRUB SETTINGS TO DISABLE IPV6. THIS MAY BE UNNECESSARY DUE TO THE
+    # PREVIOUS SECTIONS, BUT IT'S HERE FOR GOOD MEASURE.
+    #####
+
+    # IF BACKUP EXISTS, RESTORE IT BEFORE PROCEEDING. OTHERWISE, MAKE BACKUP
+    if [[ -f "/etc/default/grub.BAK" ]]; then
+        # RESTORE BACKUP
+        sudo rm /etc/default/grub
+        sudo cp /etc/default/grub.BAK /etc/default/grub
+    else
+        # MAKE BACKUP
+        sudo cp /etc/default/grub /etc/default/grub.BAK
+    fi
+
+    # CHANGE FILE
+    configLine "^[# ]*GRUB_CMDLINE_LINUX_DEFAULT.*$"  "GRUB_CMDLINE_LINUX_DEFAULT=\"maybe-ubiquity ipv6.disable=1\"" /etc/default/grub >/dev/null 2>&1
+    configLine "^[# ]*GRUB_CMDLINE_LINUX=.*$"         "GRUB_CMDLINE_LINUX=\"ipv6.disable=1\"" /etc/default/grub >/dev/null 2>&1
+
+    # UPDATE GRUB
+    sudo update-grub
+
 
     echo "${CGRN}${BLD}==========> IPV6 SUPPORT disabled.${RST}"
     echo ""
@@ -2070,7 +2094,6 @@ if [[ "$CQPWEBSW" = 1 ]]; then
     fi
 
 
-
     ####################
     # USER AND GROUP MANAGEMENT &
     # FOLDER OWNERSHIP AND PERMISSIONS
@@ -2141,55 +2164,60 @@ if [[ "$CQPWEBSW" = 1 ]]; then
     sudo chmod ugo=rwX,+s "${COMMONCQPWEBDIR}/upload"
 
     ####################
-    # PHP APACHE CONFIGURATION
+    # PHP CONFIGURATION
     ####################
 
     # GET PHP VERSION SO WE CAN FIGURE OUT THE RIGHT DIRECTORY TO WORK ON
     PHPVER="$(php --version | grep '^PHP ' | sed -r 's/^PHP ([0-9]\.[0-9]).+$/\1/')"
 
-    # MOVE INTO APPROPRIATE DIRECTORY
+    # MOVE INTO APPROPRIATE DIRECTORY [TODO: REMOVE THIS ONCE CODE WITH ABSOLUTE PATHS HAS BEEN TESTED]
     cd "/etc/php/${PHPVER}/apache2" || exit
 
-    # IF APACHE PHP.INI BACKUP EXISTS, RESTORE IT BEFORE PROCEEDING. OTHERWISE, MAKE BACKUP.
-    if [[ -f php.ini.BAK ]]; then
+    # IF PHP.INI BACKUP EXISTS, RESTORE IT BEFORE PROCEEDING. OTHERWISE, MAKE BACKUP.
+    if [[ -f /etc/php/${PHPVER}/apache2/php.ini.BAK ]]; then
         # RESTORE BACKUP
-        sudo rm php.ini
-        sudo cp php.ini.BAK php.ini
+        sudo rm /etc/php/${PHPVER}/apache2/php.ini
+        sudo cp /etc/php/${PHPVER}/apache2/php.ini.BAK /etc/php/${PHPVER}/apache2/php.ini
     else
         # MAKE BACKUP
-        sudo cp php.ini php.ini.BAK
+        sudo cp /etc/php/${PHPVER}/apache2/php.ini /etc/php/${PHPVER}/apache2/php.ini.BAK
     fi
 
     # PHP: MODIFY CONFIG FILE
-    configLine "^[; \t]*memory_limit[ =].*"              "memory_limit = 512M"             php.ini
-    configLine "^[; \t]*max_execution_time[ =].*"        "max_execution_time = 600"        php.ini
-    configLine "^[; \t]*upload_max_filesize[ =].*"       "upload_max_filesize = 128M"      php.ini
-    configLine "^[; \t]*post_max_size[ =].*"             "post_max_size = 128M"            php.ini
-    configLine "^[; \t]*mysqli.allow_local_infile[ =].*" "mysqli.allow_local_infile = On"  php.ini
-#     configLine "^[; \t]*extension=mysqli.*$"             "extension=mysqli"                php.ini
-#     configLine "^[; \t]*extension=gd2.*$"                "extension=gd2"                   php.ini
-    configLine "^[; \t]*expose_php[ =].*"                "expose_php = Off"                php.ini
+    configLine "^[; \t]*memory_limit[ =]*.*"              "memory_limit = 512M"             /etc/php/${PHPVER}/apache2/php.ini     >/dev/null 2>&1
+    configLine "^[; \t]*max_execution_time[ =]*.*"        "max_execution_time = 600"        /etc/php/${PHPVER}/apache2/php.ini     >/dev/null 2>&1
+    configLine "^[; \t]*upload_max_filesize[ =]*.*"       "upload_max_filesize = 128M"      /etc/php/${PHPVER}/apache2/php.ini     >/dev/null 2>&1
+    configLine "^[; \t]*post_max_size[ =]*.*"             "post_max_size = 128M"            /etc/php/${PHPVER}/apache2/php.ini     >/dev/null 2>&1
+    configLine "^[; \t]*mysqli.allow_local_infile[ =]*.*" "mysqli.allow_local_infile = On"  /etc/php/${PHPVER}/apache2/php.ini     >/dev/null 2>&1
+    configLine "^[; \t]*expose_php[ =]*.*"                "expose_php = 0"                  /etc/php/${PHPVER}/apache2/php.ini     >/dev/null 2>&1
+    configLine "^[; \t]*error_log[ =]*php_errors.log*.*"  "error_log = /var/log/php_errors.log" /etc/php/${PHPVER}/apache2/php.ini >/dev/null 2>&1
+    configLine "^[; \t]*log_errors[ =]*.*"                "log_errors = 1"                  /etc/php/${PHPVER}/apache2/php.ini     >/dev/null 2>&1
+
+    # CREATE PHP ERROR LOG FILE
+    sudo touch /var/log/php_errors.log
 
 
     ####################
     # PHP CLI CONFIGURATION
     ####################
 
-    # MOVE INTO APPROPRIATE DIRECTORY
+    # MOVE INTO APPROPRIATE DIRECTORY # TODO: REMOVE cd WHEN THE CODE HERE IS TESTED.
     cd "/etc/php/${PHPVER}/cli" || exit
 
     # IF CLI PHP.INI BACKUP EXISTS, RESTORE IT BEFORE PROCEEDING. OTHERWISE, MAKE BACKUP.
-    if [[ -f php.ini.BAK ]]; then
+    if [[ -f /etc/php/${PHPVER}/cli/php.ini.BAK ]]; then
         # RESTORE BACKUP
-        sudo rm php.ini
-        sudo cp php.ini.BAK php.ini
+        sudo rm /etc/php/${PHPVER}/cli/php.ini
+        sudo cp /etc/php/${PHPVER}/cli/php.ini.BAK /etc/php/${PHPVER}/cli/php.ini
     else
         # MAKE BACKUP
-        sudo cp php.ini php.ini.BAK
+        sudo cp /etc/php/${PHPVER}/cli/php.ini /etc/php/${PHPVER}/cli/php.ini.BAK
     fi
 
-    # PHP CLI: MODIFY CONFIG FILE
-    configLine "^[; \t]*mysqli.allow_local_infile[ =].*"     "mysqli.allow_local_infile = On"  php.ini
+    # PHP CLI: MODIFY CONFIG FILE TO ALLOW LOCAL INFILES. OTHERWISE, SOME THINGS DON'T WORK RIGHT.
+    configLine "^[; \t]*mysqli.allow_local_infile[ =]*.*"  "mysqli.allow_local_infile = On"  /etc/php/${PHPVER}/cli/php.ini
+    configLine "^[; \t]*expose_php[ =]*.*"                 "expose_php = Off"  /etc/php/${PHPVER}/cli/php.ini
+
 
     ####################
     # APACHE
@@ -3447,8 +3475,7 @@ if [[ "$MAILSW" = 1 ]]; then
         sudo apt upgrade -y
 
         # REMOVE EVERY LAST VESTIGE OF SENDMAIL
-        sudo apt remove sendmail -y
-        sudo apt purge sendmail -y
+        sudo apt remove --purge -y -f sendmail
 
         echo ""
         echo "${CORG}${BLD}We will now install the Postfix mail server. If asked, choose the following options...${RST}"
@@ -3609,6 +3636,7 @@ if [[ "$SECURITYSW" = 1 ]]; then
 
     ####################
     # INSTALL LYNIS SECURITY MONITORING SOFTWARE
+    # To detect non-purged packages: dpkg --list | grep ^rc | awk '{ print $2; }'
     ####################
     echo ""
     echo "${CLBL}==========> Installing Lynis security auditing software...${RST}"
@@ -3639,36 +3667,47 @@ if [[ "$SECURITYSW" = 1 ]]; then
     echo ""
     echo "${CLBL}==========> Removing insecure software...${RST}"
 
-    sudo apt remove --purge -y xinetd nis yp-tools tftpd atftpd tftpd-hpa telnetd rsh-server rsh-redone-server
+    sudo apt remove --purge -y -f xinetd nis yp-tools tftpd atftpd tftpd-hpa telnetd rsh-server rsh-redone-server
 
     ####################
     # HARDEN SYSCTL SETTINGS
     ####################
     echo ""
     echo "${CLBL}==========> Hardening sysctl.conf settings...${RST}"
-    configLine "^[# ]*kernel.randomize_va_space.*$"              "kernel.randomize_va_space=1"              /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.conf.all.accept_redirects.*$"     "net.ipv4.conf.all.accept_redirects=0"     /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.conf.all.accept_source_route.*$"  "net.ipv4.conf.all.accept_source_route=0"  /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.conf.all.log_martians.*$"         "net.ipv4.conf.all.log_martians=1"         /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.conf.all.log_martians.*$"         "net.ipv4.conf.all.log_martians=1"         /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.conf.all.rp_filter.*$"            "net.ipv4.conf.all.rp_filter=1"            /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.conf.all.rp_filter.*$"            "net.ipv4.conf.all.rp_filter=1"            /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.conf.all.send_redirects.*$"       "net.ipv4.conf.all.send_redirects=0"       /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.conf.default.accept_redirects.*$" "net.ipv4.conf.default.accept_redirects=0" /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.conf.default.rp_filter.*$"        "net.ipv4.conf.default.rp_filter=1"        /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.conf.default.send_redirects.*$"   "net.ipv4.conf.default.send_redirects=0"   /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.icmp_echo_ignore_broadcasts.*$"   "net.ipv4.icmp_echo_ignore_broadcasts=1"   /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.icmp_ignore_bogus_error_responses.*$" "net.ipv4.icmp_ignore_bogus_error_responses=1" /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.icmp_ignore_bogus_error_responses.*$" "net.ipv4.icmp_ignore_bogus_error_responses=1" /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.icmp_ignore_bogus_error_responses.*$" "net.ipv4.icmp_ignore_bogus_error_responses=1" /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.ip_forward.*$"                    "net.ipv4.ip_forward=0"                    /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.tcp_max_syn_backlog.*$"           "net.ipv4.tcp_max_syn_backlog=2048"        /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.tcp_syn_retries.*$"               "net.ipv4.tcp_syn_retries=5"               /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.tcp_synack_retries.*$"            "net.ipv4.tcp_synack_retries=2"            /etc/sysctl.conf
-    configLine "^[# ]*net.ipv4.tcp_syncookies.*$"                "net.ipv4.tcp_syncookies=1"                /etc/sysctl.conf
+    configLine "^[# ]*kernel.randomize_va_space.*$"              "kernel.randomize_va_space=1"              /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.conf.all.accept_redirects.*$"     "net.ipv4.conf.all.accept_redirects=0"     /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.conf.all.accept_source_route.*$"  "net.ipv4.conf.all.accept_source_route=0"  /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.conf.all.log_martians.*$"         "net.ipv4.conf.all.log_martians=1"         /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.conf.all.log_martians.*$"         "net.ipv4.conf.all.log_martians=1"         /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.conf.all.rp_filter.*$"            "net.ipv4.conf.all.rp_filter=1"            /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.conf.all.rp_filter.*$"            "net.ipv4.conf.all.rp_filter=1"            /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.conf.all.send_redirects.*$"       "net.ipv4.conf.all.send_redirects=0"       /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.conf.default.accept_redirects.*$" "net.ipv4.conf.default.accept_redirects=0" /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.conf.default.rp_filter.*$"        "net.ipv4.conf.default.rp_filter=1"        /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.conf.default.send_redirects.*$"   "net.ipv4.conf.default.send_redirects=0"   /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.icmp_echo_ignore_broadcasts.*$"   "net.ipv4.icmp_echo_ignore_broadcasts=1"   /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.icmp_ignore_bogus_error_responses.*$" "net.ipv4.icmp_ignore_bogus_error_responses=1" /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.icmp_ignore_bogus_error_responses.*$" "net.ipv4.icmp_ignore_bogus_error_responses=1" /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.icmp_ignore_bogus_error_responses.*$" "net.ipv4.icmp_ignore_bogus_error_responses=1" /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.ip_forward.*$"            "net.ipv4.ip_forward=0"                /etc/sysctl.conf  >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.tcp_max_syn_backlog.*$"   "net.ipv4.tcp_max_syn_backlog=2048"    /etc/sysctl.conf  >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.tcp_syn_retries.*$"       "net.ipv4.tcp_syn_retries=5"           /etc/sysctl.conf  >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.tcp_synack_retries.*$"    "net.ipv4.tcp_synack_retries=2"        /etc/sysctl.conf  >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.tcp_syncookies.*$"        "net.ipv4.tcp_syncookies=1"            /etc/sysctl.conf  >/dev/null 2>&1
+    configLine "^[# ]*fs.suid_dumpable.*$"               "fs.suid_dumpable=0"                   /etc/sysctl.conf   >/dev/null 2>&1
+    configLine "^[# ]*kernel.core_uses_pid.*$"           "kernel.core_uses_pid=1"               /etc/sysctl.conf   >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.conf.default.accept_source_route.*$"  "net.ipv4.conf.default.accept_source_route=0"  /etc/sysctl.conf >/dev/null 2>&1
+    configLine "^[# ]*net.ipv4.conf.default.log_martians.*$"  "net.ipv4.conf.default.log_martians=1" /etc/sysctl.conf   >/dev/null 2>&1
+    configLine "^[# ]*kernel.sysrq.*$"                   "kernel.sysrq=0"                       /etc/sysctl.conf   >/dev/null 2>&1
+    configLine "^[# ]*kernel.dmesg_restrict.*$"          "kernel.dmesg_restrict=1"              /etc/sysctl.conf   >/dev/null 2>&1
+    configLine "^[# ]*kernel.kptr_restrict.*$"           "kernel.kptr_restrict=2"               /etc/sysctl.conf   >/dev/null 2>&1
+    configLine "^[# ]*kernel.randomize_va_space.*$"      "kernel.randomize_va_space=2"          /etc/sysctl.conf   >/dev/null 2>&1
+    configLine "^[# ]*vm.swappiness.*$"                  "vm.swappiness=10"                     /etc/sysctl.conf   >/dev/null 2>&1
+
+
 
     # RELOAD sysctl
-    sudo sysctl -p
+    sudo sysctl -p >/dev/null 2>&1
 
     ####################
     # DISABLE USB, THUNDERBOLT, FIREWIRE PORTS. GOOD SECURITY PRACTICE FOR SERVERS
@@ -3737,7 +3776,6 @@ if [[ "$UFWSW" = 1 ]]; then
     # you don't need. Values: allow (allow), limit (block after 6 failed attempts
     # in 30 seconds), reject (block with notification), deny (block silently).
     if [[ ! -z "${SSHPORT}" ]];   then sudo ufw limit "${SSHPORT}"      comment 'SSH port'; fi
-    if [[ ! -z "${MOSHPORT}" ]];  then sudo ufw limit "${MOSHPORT}/udp" comment 'MOSH port'; fi
     if [[ ! -z "${SMTPPORT}" ]];  then sudo ufw limit "${SMTPPORT}"     comment 'SMTP port'; fi
     if [[ ! -z "${RSYNCPORT}" ]]; then sudo ufw limit "${RSYNCPORT}"    comment 'RSYNC port'; fi
     if [[ ! -z "${IMAPSPORT}" ]]; then sudo ufw limit "${IMAPSPORT}"    comment 'IMAPS port'; fi
@@ -3758,8 +3796,6 @@ if [[ "$UFWSW" = 1 ]]; then
     echo ""
     echo "${CRED}${BLD}            NOTE: Your SSH port is ${CWHT}${SSHPORT}${CRED}. If you haven't done so already, running this script ${RST}"
     echo "${CRED}${BLD}                  again, but with ${CWHT}SSHPWDSW=1${CRED}, will configure the server for SSH using this port.${RST}"
-    echo ""
-    echo "${CRED}${BLD}                  Your MOSH (improved SSH) UDP port is ${CWHT}${MOSHPORT}${CRED}.${RST}"
     echo ""
     read -r -p "${CORG}${BLD}            Press any key to continue (or wait 10 seconds)... ${RST}" -n 1 -t 10 -s
     echo ""
@@ -3821,10 +3857,13 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 
     if [[ "$ANSWER" = [yY] || "$ANSWER" = [yY][eE][sS] ]]; then
 
-        ############### INSTALL THE SOFTWARE ###############
+        ############### INSTALL FAIL2BAN AND ASSOCIATED SOFTWARE ###############
         sudo apt update -y
         sudo apt autoremove -y
         sudo apt install -y --install-recommends --install-suggests fail2ban iptables-persistent logcheck python3-dnspython geoip-bin geoip-database-extra
+
+        ############### MODIFY FAIL2BAN.CONF FILE ###############
+        configLine "^[# ]*dbpurgeage.*$"         "dbpurgeage = 648000" /etc/fail2ban/fail2ban.conf >/dev/null 2>&1
 
         ############### CREATE JAIL.LOCAL CONFIG FILE ###############
         # Delete any pre-existing local config file and create a new one
@@ -3841,8 +3880,8 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		############### MISCELLANEOUS OPTIONS ###############
 		ignorself = true
 		ignoreip = ${WHITELISTEDIPS}
-		bantime  = 6h
-		findtime  = 6h
+		bantime  = 24h
+		findtime = 24h
 		maxretry = 4
 		backend = auto
 		usedns = warn
@@ -3897,7 +3936,8 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		logpath = %(sshd_log)s
 		backend = %(sshd_backend)s
 		bantime = 24h
-		findtime  = 12h
+		findtime = 24h
+		maxretry = 3
 
 		[dropbear]
 		enabled  = true
@@ -3905,7 +3945,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		logpath  = %(dropbear_log)s
 		backend  = %(dropbear_backend)s
 		bantime  = 72h
-		findtime  = 12h
+		findtime = 12h
 
 
 		##### HTTP servers ######
@@ -3915,14 +3955,14 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port     = http,https
 		logpath  = %(apache_error_log)s
 		bantime  = 72h
-		findtime  = 12h
+		findtime = 12h
 
 		[apache-badbots]
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_access_log)s
 		bantime  = 72h
-		findtime  = 12h
+		findtime = 12h
 		maxretry = 1
 
 		[apache-noscript]
@@ -3930,7 +3970,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port     = http,https
 		logpath  = %(apache_error_log)s
 		bantime  = 72h
-		findtime  = 12h
+		findtime = 48h
 		maxretry = 1
 
 		[apache-overflows]
@@ -3938,7 +3978,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port     = http,https
 		logpath  = %(apache_error_log)s
 		bantime  = 72h
-		findtime  = 12h
+		findtime = 12h
 		maxretry = 2
 
 		[apache-nohome]
@@ -3946,7 +3986,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port     = http,https
 		logpath  = %(apache_error_log)s
 		bantime  = 72h
-		findtime  = 12h
+		findtime = 12h
 		maxretry = 2
 
 		[apache-botsearch]
@@ -3954,7 +3994,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port     = http,https
 		logpath  = %(apache_error_log)s
 		bantime  = 72h
-		findtime  = 12h
+		findtime = 12h
 		maxretry = 2
 
 		[apache-fakegooglebot]
@@ -3962,7 +4002,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port     = http,https
 		logpath  = %(apache_access_log)s
 		bantime  = 72h
-		findtime  = 12h
+		findtime = 24h
 		maxretry = 1
 		ignorecommand = %(ignorecommands_dir)s/apache-fakegooglebot <ip>
 
@@ -3971,7 +4011,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port     = http,https
 		logpath  = %(apache_error_log)s
 		bantime  = 72h
-		findtime  = 12h
+		findtime = 12h
 		maxretry = 2
 
 		[apache-shellshock]
@@ -3979,7 +4019,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port     = http,https
 		logpath  = %(apache_error_log)s
 		bantime  = 72h
-		findtime  = 12h
+		findtime = 12h
 		maxretry = 1
 
 		# BAN ATTACKERS THAT TRY TO USE PHP'S URL-FOPEN() FUNCTIONALITY
@@ -3991,7 +4031,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port    = http,https
 		logpath = %(apache_access_log)s
 		bantime  = 72h
-		findtime  = 12h
+		findtime = 12h
 
 
 		###### Web Applications ######
@@ -4013,7 +4053,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		logpath = %(postfix_log)s
 		backend = %(postfix_backend)s
 		bantime  = 72h
-		findtime  = 12h
+		findtime = 12h
 
 		[postfix-rbl]
 		enabled  = true
@@ -4022,7 +4062,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		logpath  = %(postfix_log)s
 		backend  = %(postfix_backend)s
 		bantime  = 72h
-		findtime  = 12h
+		findtime = 12h
 		maxretry = 1
 
 		[sendmail-auth]
@@ -4055,7 +4095,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		logpath  = %(postfix_log)s
 		backend  = %(postfix_backend)s
 		bantime  = 72h
-		findtime  = 12h
+		findtime = 12h
 
 
 		###### JAIL FOR MORE EXTENDED BANNING OF PERSISTENT ABUSERS ######
@@ -4071,7 +4111,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		logpath   = /var/log/fail2ban.log
 		banaction = %(banaction_allports)s
 		bantime   = 26w
-		findtime  = 1d
+		findtime  = 3d
 
 
 		# Generic filter for PAM. Has to be used with action which bans all
@@ -4083,25 +4123,25 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		banaction = %(banaction_allports)s
 		logpath   = %(syslog_authpriv)s
 		backend   = %(syslog_backend)s
-		bantime  = 72h
+		bantime   = 72h
 		findtime  = 12h
 
 		[phpmyadmin-syslog]
-		enabled = true
-		port    = http,https
-		logpath = %(syslog_authpriv)s
-		backend = %(syslog_backend)s
+		enabled  = true
+		port     = http,https
+		logpath  = %(syslog_authpriv)s
+		backend  = %(syslog_backend)s
 		bantime  = 72h
-		findtime  = 12h
+		findtime = 12h
 
 		[zoneminder]
 		# ZONEMINDER HTTP/HTTPS WEB INTERFACE AUTH
 		# LOGS AUTH FAILURES TO APACHE2 ERROR LOG
-		enabled = true
-		port    = http,https
-		logpath = %(apache_error_log)s
+		enabled  = true
+		port     = http,https
+		logpath  = %(apache_error_log)s
 		bantime  = 72h
-		findtime  = 12h
+		findtime = 12h
 
 EOF
 
@@ -4109,6 +4149,35 @@ EOF
         # It doesn't seem to work right with auth.log's date format (mmm d).
         sudo cp /etc/fail2ban/filter.d/common.conf /etc/fail2ban/filter.d/common.local
         configLine "^[# ]*__bsd_syslog_verbose.*$"  "__bsd_syslog_verbose = (<[^.]+ [^.]+>)" /etc/fail2ban/filter.d/common.local >/dev/null 2>&1
+
+
+        ###############
+        # CREATE AND INSTALL AN UPDATED apache-badbots.conf FILE. PACKAGED VERSION IS FROM 2013!
+        ###############
+
+        # Clone fail2ban github repo and generate new apache-badbots.conf file
+        mkdir -p ~/tmp
+        cd ~/tmp
+        git clone https://github.com/fail2ban/fail2ban
+        cd ~/tmp/fail2ban
+        ./files/gen_badbots
+
+        # Modify the too-strict regex in apache-badbots.conf
+        # OLD: failregex = ^<HOST> -.*"(GET|POST).*HTTP.*"(?:%(badbots)s|%(badbotscustom)s)"$
+        # NEW: failregex = ^<HOST> -.*"(GET|POST).*HTTP.*"(.*?:%(badbots)s|%(badbotscustom)s).*"$
+        configLine "failregex = \^<HOST> -.\*\"(GET\|POST).\*HTTP.\*\"(?:%(badbots)s\|%(badbotscustom)s)\"\$"  "failregex = ^<HOST> -.*\"(GET|POST).*HTTP.*\"(.*?:%(badbots)s|%(badbotscustom)s).*\"$"  ~/tmp/fail2ban/config/filter.d/apache-badbots.conf
+
+        # BACKUP apache-badbots.conf IF THERE IS NO BACKUP
+        if ! [[ -f /etc/fail2ban/filter.d/apache-badbots.conf.BAK ]]; then
+            sudo mv /etc/fail2ban/filter.d/apache-badbots.conf /etc/default/sysstat /etc/default/sysstat.BAK
+        fi
+
+        # Install the new apache-badbots.conf
+        sudo cp ~/tmp/fail2ban/config/filter.d/apache-badbots.conf /etc/fail2ban/filter.d/apache-badbots.conf
+
+        # REMOVE TEMP FILES
+        sudo rm -rf ~/tmp/fail2ban
+
 
         ############### INSTALL FAIL2BAN MONITORING SCRIPT
         if [[ -f ~/bin/f2b-monitor.sh ]]; then
@@ -4778,6 +4847,7 @@ else
 fi
 
 
+ MOSHPORT=YOUR_INFO_HERE # CHOOSE A RANDOM HIGH PORT FOR THIS (10000-60000 IS A GOOD RANGE)
        FREELINGESCLMODS=0   # Modify FreeLing's Chilean Spanish install.
 cwb_max_ram_usage_cli         = 1024
   IMAGEUPLD=0               # Upload specified image to use as top left/right graphic in CQPweb. Set location and URL below.
