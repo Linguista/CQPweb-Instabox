@@ -4,7 +4,7 @@ SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
 # DATE:     2019-11-07
-# VERSION:  83
+# VERSION:  84
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes an install of certain versions of Ubuntu or Debian and sets up Open
@@ -17,12 +17,21 @@ SCRIPTNAME="cqpweb-instabox.sh"
 #                - Ubuntu 18.04 LTS Alternative Server (the traditional server)
 #                - Ubuntu 18.04 LTS Desktop
 #                - Lubuntu 18.04 Desktop
-#                - Debian 9.9 Stable
+#                - Debian 9.9 Stable (note that newer versions of this script have not been tested on Debian yet).
 #
 #              While I've made every effort to make it work properly, it comes with no guarantees and
 #              no warranties. Bug reports are most welcome!
 
+
 # CHANGE LOG:
+#
+# v84
+# - Added script to find world-writable files.
+# - Added `bat` to server install.
+# - Log monitoring aliases and `byobu` screens now use `lnav` instead of `tail`.
+# - Added install of `bashmarks`.
+# - Implemented a fix for fail2ban's use of Debian paths on Ubuntu.
+# - Configured `fail2ban` to ban port scanners logged by UFW and connection attempts over UDP.
 #
 # v83
 # - Modernized and further hardened SSH configuration.
@@ -842,6 +851,10 @@ if [[ "$CONFIGBASH" = 1 ]]; then
 	export LESS='FiX'
 	export CHEATCOLORS=true
 
+	# BAT SETTINGS
+	export BAT_PAGER="less"
+	export BAT_THEME="OneHalfDark"
+
 	# SAFETY NETS
 	alias rm='rm -I --preserve-root'
 	alias chown='chown --preserve-root'
@@ -876,7 +889,6 @@ if [[ "$CONFIGBASH" = 1 ]]; then
 	alias getip='wget -qO - http://wtfismyip.com/text'
 	alias grep='grep --color=auto -i'
 	alias j='jobs -l'
-	alias l='ls -CF'
 	alias la='ls -A'
 	alias lc.='ls -d .*'
 	alias lc='ls -CF'
@@ -903,17 +915,18 @@ if [[ "$CONFIGBASH" = 1 ]]; then
 	alias ugr='sudo apt list --upgradable'
 
 	# ALIASES FOR VIEWING LOGFILES
-	alias alog='tail -f -n 25 /var/log/auth.log'
-	alias apalog='tail -f -n 25 /var/log/apache2/access.log'
-	alias apelog='tail -f -n 25 /var/log/apache2/error.log'
-	alias flog='tail -f -n 25 /var/log/fail2ban.log'
-	alias klog='tail -f -n 25 /var/log/kern.log'
-	alias mlog='tail -f -n 25 /var/log/mail.log'
-	alias mslog='tail -f -n 25 /var/log/apache2/modsec_audit.log'
-	alias mylog='tail -f -n 25 /var/log/mysql/error.log'
-	alias slog='tail -f -n 25 /var/log/syslog'
-	alias ulog='tail -f -n 25 /var/log/ufw.log'
-	alias upslog='tail -f -n 25 /var/log/apcupsd.events'
+	alias alog='lnav /var/log/auth.log'
+	alias apalog='lnav /var/log/apache2/access.log'
+	alias apelog='lnav /var/log/apache2/error.log'
+	alias flog='lnav /var/log/fail2ban.log'
+	alias klog='lnav /var/log/kern.log'
+	alias mlog='lnav /var/log/mail.log'
+	alias mslog='lnav /var/log/apache2/modsec_audit.log'
+	alias mylog='lnav /var/log/mysql/error.log'
+	alias plog='lnav /var/log/php_errors.log'
+	alias slog='lnav /var/log/syslog'
+	alias ulog='lnav /var/log/ufw.log'
+	alias upslog='lnav /var/log/apcupsd.events'
 
 	# LINGUISTIC THINGS
 	alias cqp='cqp -eC'
@@ -1231,7 +1244,7 @@ if [[ "$SSHPWDSW" = 1 ]]; then
         configLine "^[# ]*ChallengeResponseAuthentication.*$" "ChallengeResponseAuthentication no" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*Ciphers.*$"                         "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*ClientAliveCountMax.*$"             "ClientAliveCountMax 2" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*ClientAliveInterval.*$"             "ClientAliveInterval 10" /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*ClientAliveInterval.*$"             "ClientAliveInterval 60" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*Compression.*$"                     "Compression no" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*DenyGroups.*$"                      "DenyGroups root" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*DenyUsers.*$"                       "DenyUsers root" /etc/ssh/sshd_config >/dev/null 2>&1
@@ -1479,6 +1492,17 @@ if [[ "$USEFULSW" = 1 ]]; then
         sudo apt install -y --install-recommends p7zip-rar unrar
     fi
 
+
+    # INSTALL BASHMARKS
+    mkdir -p ~/tmp
+    cd ~/tmp
+    git clone git://github.com/huyng/bashmarks.git
+    cd bashmarks
+    sudo make install
+    cd ..
+    rm -rf ~/tmp/bashmarks
+
+
     echo "${CGRN}${BLD}==========> USEFUL SOFTWARE installation finished).${RST}"
     echo ""
 else
@@ -1655,8 +1679,20 @@ if [[ "$SERVERSW" = 1 ]]; then
     fi
 
     curl -LO "${FDPATH}/${FDFILENAME}"      # DOWNLOAD THE DEB FILE
-    sudo dpkg -i "${FDFILENAME}"  # INSTALL THE DEB FILE
+    sudo dpkg -i "${FDFILENAME}"            # INSTALL THE DEB FILE
     sudo rm -rf /tmp/fd                     # DELETE THE TMP DIRECTORY AND ITS CONTENTS
+
+
+    ####################
+    # INSTALL bat (https://github.com/sharkdp/bat)
+    # This installs 0.12.1. It will need to be manually updated.
+    ####################
+    mkdir -p ~/tmp
+    cd ~/tmp
+    wget https://github.com/sharkdp/bat/releases/download/v0.12.1/bat_0.12.1_amd64.deb
+    sudo dpkg -i bat_0.12.1_amd64.deb
+    rm bat_0.12.1_amd64.deb
+
 
     echo "${CGRN}${BLD}==========> SERVER SOFTWARE installation finished.${RST}"
     echo ""
@@ -2195,6 +2231,8 @@ if [[ "$CQPWEBSW" = 1 ]]; then
 
     # CREATE PHP ERROR LOG FILE
     sudo touch /var/log/php_errors.log
+    sudo chown www-data:adm /var/log/php_errors.log
+    sudo chmod 640 /var/log/php_errors.log
 
 
     ####################
@@ -2531,10 +2569,6 @@ if [[ ${CREATECQPWEBSCRIPTS} = 1 ]]; then
 
 EOF
 
-    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
-    sudo chown "${USER}:${USER}" "${HOME}/bin/upd-cwb.sh"
-    sudo chmod ug=rwx "${HOME}/bin/upd-cwb.sh"
-
 
     ####################
     # CREATE SCRIPT TO UPDATE CWB-DOC
@@ -2575,10 +2609,6 @@ EOF
 	echo ""
 
 EOF
-
-    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
-    sudo chown "${USER}:${USER}" "${HOME}/bin/upd-cwbdoc.sh"
-    sudo chmod ug=rwx "${HOME}/bin/upd-cwbdoc.sh"
 
 
     ####################
@@ -2653,10 +2683,6 @@ EOF
 
 EOF
 
-    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
-    sudo chown "${USER}:${USER}" "${HOME}/bin/upd-cwbperl.sh"
-    sudo chmod ug=rwx "${HOME}/bin/upd-cwbperl.sh"
-
 
     ####################
     # CREATE SCRIPT TO UPDATE CQPWEB
@@ -2706,10 +2732,6 @@ EOF
 
 EOF
 
-    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
-    sudo chown "${USER}:${USER}" "${HOME}/bin/upd-cqpweb.sh"
-    sudo chmod ug=rwx "${HOME}/bin/upd-cqpweb.sh"
-
 
     ####################
     # CREATE SCRIPT TO UPDATE ALL COMPONENTS AT ONCE (BY RUNNING THE ABOVE SCRIPTS)
@@ -2741,10 +2763,6 @@ EOF
 	echo ""
 
 EOF
-
-    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
-    sudo chown "${USER}:${USER}" "${HOME}/bin/upd-all.sh"
-    sudo chmod ug=rwx "${HOME}/bin/upd-all.sh"
 
 
     ####################
@@ -2778,11 +2796,6 @@ EOF
 	echo ""
 
 EOF
-
-    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
-    sudo chown "${USER}:${USER}" "${HOME}/bin/upd-database.sh"
-    sudo chmod ug=rwx "${HOME}/bin/upd-database.sh"
-
 
 
     ####################
@@ -2818,11 +2831,6 @@ EOF
 
 EOF
 
-    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
-    sudo chown "${USER}:${USER}" "${HOME}/bin/testmail-postfix.sh"
-    sudo chmod ug=rwx "${HOME}/bin/testmail-postfix.sh"
-
-
 
     ####################
     # CREATE SCRIPT TO SEND TEST MAIL FROM CQPWEB VIA PHP
@@ -2856,13 +2864,6 @@ EOF
 	echo ""
 
 EOF
-
-    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
-    sudo chown "${USER}:${USER}" "${HOME}/bin/testmail-cqpweb.sh"
-    sudo chmod ug=rwx "${HOME}/bin/testmail-cqpweb.sh"
-
-
-
 
 
     ####################
@@ -2914,10 +2915,6 @@ EOF
 
 EOF
 
-    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
-    sudo chown "${USER}:${USER}" "${HOME}/bin/version-report.sh"
-    sudo chmod ug=rwx "${HOME}/bin/version-report.sh"
-
 
     ####################
     # CREATE SCRIPT TO MANUALLY CALCULATE STTR
@@ -2945,10 +2942,6 @@ EOF
 	echo ""
 
 EOF
-
-    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
-    sudo chown "${USER}:${USER}" "${HOME}/bin/calculate-sttr.sh"
-    sudo chmod ug=rwx "${HOME}/bin/calculate-sttr.sh"
 
 
     ####################
@@ -2988,10 +2981,6 @@ EOF
 	fi
 
 EOF
-
-    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
-    sudo chown "${USER}:${USER}" "${HOME}/bin/calculate-frequencies-offline.sh"
-    sudo chmod ug=rwx "${HOME}/bin/calculate-frequencies-offline.sh"
 
 
     ####################
@@ -3052,17 +3041,33 @@ EOF
 
 EOF
 
-    # SET OWNER, GROUP AND PERMISSIONS OF SCRIPT FILE
-    sudo chown "${USER}:${USER}" "${HOME}/bin/bymon.sh"
-    sudo chmod ug=rwx "${HOME}/bin/bymon.sh"
+
+    ####################
+    # CREATE SCRIPT TO FIND WORLD-WRITABLE DIRECTORIES
+    ####################
+
+    # DELETE ANY OLD VERSION OF THE SCRIPT
+    sudo rm -f "${HOME}/bin/find-world-writable.sh"
+
+    # WRITE SCRIPT TO NEW FILE
+    sudo tee "${HOME}/bin/find-world-writable.sh" <<- EOF >/dev/null 2>&1
+	#!/bin/bash
+
+	# FIND WORLD-WRITABLE DIRECTORIES
+	# This script was created automatically by ${SCRIPTNAME} on ${DATE}.
+
+	sudo find / -xdev -type d \( -perm -0002 -a ! -perm -1000 \) -print
+
+EOF
 
 
     ########################################
-    # SET OWNER OF ALL SCRIPTS IN ~/bin
+    # SET OWNER AND PERMISSIONS OF ALL SCRIPTS IN ~/bin
     #   THIS SHOULDN'T BE NECESSARY, BUT ON CERTAIN VPS-PRECONFIGURED UBUNTU
     #   OS IMAGES (AT LEAST) THE CODE ABOVE DOESN'T DO IT FOR MOST SCRIPTS.
     ########################################
     sudo chown "${USER}:${USER}" "${HOME}"/bin/*.sh
+    sudo chmod 700 "${HOME}"/bin/*.sh
 
 
     echo "${CGRN}${BLD}==========> CQPWEB SCRIPTS installation finished.${RST}"
@@ -3873,7 +3878,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
         # Create config file
         sudo tee -a /etc/fail2ban/jail.local <<- EOF >/dev/null 2>&1
 		[INCLUDES]
-		before = paths-debian.conf
+		before = paths-ubuntu.conf
 
 		[DEFAULT]
 
@@ -3895,7 +3900,8 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		sender = fail2ban@${SERVERALIAS}
 		#mta = sendmail
 		mta = mail
-		protocol = tcp
+		#protocol = tcp
+		protocol = all
 		port = 0:65535
 		fail2ban_agent = Fail2Ban/%(fail2ban_version)s
 
@@ -3954,22 +3960,23 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_error_log)s
-		bantime  = 72h
-		findtime = 12h
+		bantime  = 3600
+		findtime = 300
+		maxretry = 6
 
 		[apache-badbots]
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_access_log)s
-		bantime  = 72h
-		findtime = 12h
+		bantime  = 7d
+		findtime = 24h
 		maxretry = 1
 
 		[apache-noscript]
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_error_log)s
-		bantime  = 72h
+		bantime  = 7d
 		findtime = 48h
 		maxretry = 1
 
@@ -4097,6 +4104,15 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		bantime  = 72h
 		findtime = 12h
 
+		[ufw-port-scan]
+		enabled   = true
+		port      = all
+		filter    = ufw-port-scan
+		logpath   = /var/log/ufw.log
+		bantime   = 31536000
+		findtime  = 1w
+		maxretry  = 3
+
 
 		###### JAIL FOR MORE EXTENDED BANNING OF PERSISTENT ABUSERS ######
 		# !!! WARNINGS !!!
@@ -4145,11 +4161,58 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 
 EOF
 
+        ############### CHANGE PROTOCOL FROM 'TCP' TO 'ALL' IN ACTIONS ###############
+        configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/dshield.conf >/dev/null 2>&1
+        configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/mynetwatchman.conf >/dev/null 2>&1
+        configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/nftables.conf >/dev/null 2>&1
+        configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/pf.conf >/dev/null 2>&1
+        configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/firewallcmd-common.conf >/dev/null 2>&1
+        configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/iptables-common.conf >/dev/null 2>&1
+
+
         ############### FIX REGEX FOR __bsd_syslog_verbose ###############
         # It doesn't seem to work right with auth.log's date format (mmm d).
         sudo cp /etc/fail2ban/filter.d/common.conf /etc/fail2ban/filter.d/common.local
         configLine "^[# ]*__bsd_syslog_verbose.*$"  "__bsd_syslog_verbose = (<[^.]+ [^.]+>)" /etc/fail2ban/filter.d/common.local >/dev/null 2>&1
 
+
+        ############### CREATE A FILE WITH CORRECT UBUNTU PATHS ###############
+        # Stunningly, even the development versions of fail2ban use Debian
+        # some of which are simply wrong on Ubuntu.
+
+        sudo touch /etc/fail2ban/paths-ubuntu.conf
+
+        sudo tee -a /etc/fail2ban/paths-ubuntu.conf <<- EOF >/dev/null 2>&1
+		# Ubuntu log-file locations
+
+		[INCLUDES]
+		before = paths-common.conf
+		after  = paths-overrides.local
+
+		[DEFAULT]
+		syslog_local0 = /var/log/syslog
+		syslog_mail = /var/log/mail.log
+
+		# control the 'mail.warn' setting, see '/etc/rsyslog.d/50-default.conf (if commented 'mail.*' wins).
+		# syslog_mail_warn = /var/log/mail.warn
+		syslog_mail_warn = %(syslog_mail)s
+
+		exim_main_log = /var/log/exim4/mainlog
+		mysql_log = /var/log/mysql/error.log
+		postfix_log = %(syslog_mail)s
+		proftpd_log = /var/log/proftpd/proftpd.log
+
+EOF
+
+        ############### BLOCK PORT SCANNERS LOGGED BY UFW ###############
+
+        # Create filter file for UFW port scan blocker
+        sudo tee -a /etc/fail2ban/filter.d/ufw-port-scan.conf <<- EOF >/dev/null 2>&1
+		[Definition]
+		failregex = .*\[UFW BLOCK\] IN=.* SRC=<HOST>
+		ignoreregex =
+
+EOF
 
         ###############
         # CREATE AND INSTALL AN UPDATED apache-badbots.conf FILE. PACKAGED VERSION IS FROM 2013!
@@ -4179,7 +4242,7 @@ EOF
         sudo rm -rf ~/tmp/fail2ban
 
 
-        ############### INSTALL FAIL2BAN MONITORING SCRIPT
+        ############### CREATE FAIL2BAN MONITORING SCRIPT
         if [[ -f ~/bin/f2b-monitor.sh ]]; then
             rm ~/bin/f2b-monitor.sh
         fi
@@ -4216,8 +4279,22 @@ EOF
 		echo ""
 
 EOF
+
+        ############### CREATE FAIL2BAN BLOCKED IP LISTING SCRIPT
+        if [[ -f ~/bin/f2b-banned.sh ]]; then
+            rm ~/bin/f2b-banned.sh
+        fi
+
+        touch ~/bin/f2b-banned.sh
+
+        tee -a ~/bin/f2b-banned.sh <<- EOF >/dev/null 2>&1
+		#!/bin/bash
+		awk '($(NF-1) = /Ban/){print $NF,"("$NF")"}' /var/log/fail2ban.log | sort | logresolve | uniq -c | sort -n | lnav
+
+EOF
         # Make the script executable
-        sudo chmod ug+x ~/bin/f2b-monitor.sh
+        sudo chmod ug+x ~/bin/f2b-banned.sh
+
 
 
         ############### RESTART FAIL2BAN ###############
@@ -4309,10 +4386,10 @@ EOF
     # CONFIGURE MOD_SECURITY
     #########################
 
-    # Copy config template
+    # COPY CONFIG TEMPLATE
     sudo cp /etc/modsecurity/modsecurity.conf-recommended /etc/modsecurity/modsecurity.conf
 
-    # Change configuration to turn mod_security on
+    # CHANGE CONFIGURATION TO TURN MOD_SECURITY ON
     configLine "^[# ]*SecRuleEngine.*$" "SecRuleEngine on" /etc/modsecurity/modsecurity.conf >/dev/null 2>&1
 
     # FIX MOD_SECURITY LOGFILE OWNERSHIP AND PERMISSIONS
