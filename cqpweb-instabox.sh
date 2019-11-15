@@ -3,8 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-11-07
-# VERSION:  84
+# DATE:     2019-11-11
+# VERSION:  85
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes an install of certain versions of Ubuntu or Debian and sets up Open
@@ -24,6 +24,15 @@ SCRIPTNAME="cqpweb-instabox.sh"
 
 
 # CHANGE LOG:
+#
+# V85
+# - Added SSL to the server config, using certificates from Let's Encrypt. Set with SSLSW=1.
+# - Further improved fail2ban configuration.
+# - Vastly increased number of bad bots detected by apache-badbots module.
+# - Fixed regression that disabled detection of $ETHERNET.
+# - Fixed permissions and ownership of /var/log/apache2/modsec_audit.log
+# - Added "Sensible Bash" settings to .bashrc (see <https://github.com/mrzool/bash-sensible>)
+# - Configured `nano` using `.nanorc`.
 #
 # v84
 # - Added script to find world-writable files.
@@ -176,27 +185,27 @@ SCRIPTNAME="cqpweb-instabox.sh"
 ################################################################################
 
 # SYSTEM CONFIGURATION
-     UPGRADEOS=0    # Upgrade the OS and all its software packages to the latest versions.
-   CONFIGSHELL=0    # Change default shell from dash to bash. Prevents certain errors.
-    CONFIGBASH=0    # Configure .bashrc with some useful things.
-      CONFIGTZ=0    # Set up time zone.
- CONFIGCONSOLE=0    # Configure the console's encoding, fonts, etc.
-CONFIGKEYBOARD=0    # Configure the console's keyboard
-CONFIGUBUCLOUD=0    # UBUNTU LIVE SERVER 18.04 ONLY: Remove certain cloud-specific components.
-    CONFIGHOST=0    # UBUNTU LIVE SERVER 18.04 ONLY: Configure host information to fix bug.
+     UPGRADEOS=9    # Upgrade the OS and all its software packages to the latest versions.
+   CONFIGSHELL=9    # Change default shell from dash to bash. Prevents certain errors.
+    CONFIGBASH=2    # Configure .bashrc with some useful things.
+      CONFIGTZ=9    # Set up time zone.
+ CONFIGCONSOLE=9    # Configure the console's encoding, fonts, etc.
+CONFIGKEYBOARD=9    # Configure the console's keyboard
+CONFIGUBUCLOUD=9    # UBUNTU LIVE SERVER 18.04 ONLY: Remove certain cloud-specific components.
+    CONFIGHOST=9    # UBUNTU LIVE SERVER 18.04 ONLY: Configure host information to fix bug.
 
 # SSH CONFIGURATION
-SSHGENNEWKEYS=0     # Generate new SSH keys and moduli. The latter will take around an hour.
-     SSHPWDSW=0     # Install and configure SSH WITH PASSWORD ACCESS on the server, to allow remote administration.
+SSHGENNEWKEYS=9     # Generate new SSH keys and moduli. The latter will take around an hour.
+     SSHPWDSW=2     # Install and configure SSH WITH PASSWORD ACCESS on the server, to allow remote administration.
 # WARNING: Do not run SSHPWDSW and SSHKEYSW together! You must copy your SSH public key to the server in between!
-     SSHKEYSW=0     # Reconfigure the SSH server for access using a PUBLIC KEY instead of a PASSWORD. A true MUST for security!
+     SSHKEYSW=2     # Reconfigure the SSH server for access using a PUBLIC KEY instead of a PASSWORD. A true MUST for security!
                     #    Do this only AFTER installing the SSH server with password access and uploading your pubic key to the server!
 
 # MAIN SOFTWARE SETS
-NECESSARYSW=0       # Install software necessary for the server to work.
-   USEFULSW=0       # Install software considered useful (though optional).
-   SERVERSW=0       # Install server software (monitoring, security and such).
- VIRTUALSRV=0       # Set to 1 for virtual servers (VPS). This uninstalls certain hardware-related software.
+NECESSARYSW=2       # Install software necessary for the server to work.
+   USEFULSW=2       # Install software considered useful (though optional).
+   SERVERSW=2       # Install server software (monitoring, security and such).
+ VIRTUALSRV=2       # Set to 1 for virtual servers (VPS). This uninstalls certain hardware-related software.
 
 # CWB+CQPWEB+CORPORA
   CQPCWBRELEASE=0                           # Install a specific SubVersion release of CWB and CQPweb. "0" downloads latest version.
@@ -234,7 +243,7 @@ IMAGEUPLD=0                  # Upload specified image to use as top left/right g
 FAVICONUPLD=0                # Upload favicon.ico to root of website?
   FAVICONSOURCE="YOUR_INFO_HERE" # Source URL of favicon.ico.
   FAVICONTARGET="/var/www/html/cqpweb/" # Destination directory of favicon.ico.
-CREATECQPWEBSCRIPTS=0        # Create a series of useful scripts in ~/bin.
+CREATECQPWEBSCRIPTS=2        # Create a series of useful scripts in ~/bin.
 CUSTPGSIGNUP=0               # Customize CQPweb signup page. Users will definitely want to customize this customization.
 CUSTPGMENUGRAPHIC=0          # Replaces the word "Menu" in the T/L cell of most pages with a graphic ('IMAGESOURCE2', above) and optional URL.
   MENUURLUSER="YOUR_INFO_HERE"  # URL to assign to T/L graphic on user home pages.
@@ -250,20 +259,21 @@ CUSTOMIZEFONTS=0             # Modify CSS files in order to use a user-specified
                              # [MONO-SMALL]: Inconsolata, Ubuntu Mono
                              # [MONO-MID]: Oxygen Mono, Space Mono, Overpass Mono, Fira Mono, IBM Plex Mono, Source Code Pro
                              # [MONO-UGLY]test Anonymous Pro, B612 Mono, Cousine, PT Mono
-TURNDEBUGON=0                # Set CQPweb to print debug messages.
+TURNDEBUGON=9                # Set CQPweb to print debug messages.
 
 # CORPORA
-CORPDICKENS=0       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
+CORPDICKENS=9       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
 
 # ADDITIONAL SYSTEM SOFTWARE AND SYSTEM OPTIONS
-     MAILSW=0       # Install and configure the Postfix mail server.
- SECURITYSW=0       # Install general security software. Highly recommended for server install.
-      UFWSW=0       # Install and configure Universal FireWall (UFW). Important for security!
-      UPSSW=0       # Install and configure software for APC BackUPS Pro 900 UPS (051d:0002)
+     MAILSW=9       # Install and configure the Postfix mail server.
+ SECURITYSW=2       # Install general security software. Highly recommended for server install.
+      UFWSW=2       # Install and configure Universal FireWall (UFW). Important for security!
+      UPSSW=9       # Install and configure software for APC BackUPS Pro 900 UPS (051d:0002)
  FAIL2BANSW=0       # Install and configure fail2ban. Important for security! But install this last, after you've confirmed everything works.
 WHITELISTEDIPS="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16" # IP addresses to whitelist (never ban) in fail2ban. Separate with space.
-APACHESECSW=0       # Install the Apache mod_security and mod_evasive security modules.
-DISABLEIPV6=0       # Completely disable ipv6 support in the host OS.
+APACHESECSW=2       # Install the Apache mod_security and mod_evasive security modules.
+DISABLEIPV6=2       # Completely disable ipv6 support in the host OS.
+      SSLSW=2       # Configure server to use SSL (HTTPS) with a certificate from Let's Encrypt.
 
 # ADDITIONAL LINGUISTIC SOFTWARE: HEADLESS SERVER OR GUI
 FREELINGSW=0             # Install FreeLing tagger.
@@ -333,7 +343,7 @@ LOCALHOSTNAME="$(hostname)"                             # Local system's host na
 #OS="$(cat /etc/lsb-release | grep DISTRIB_ID | sed -r 's/DISTRIB_ID=//')" # Distro name
 OS="$(lsb_release -i -s)" # Distro name
 RELEASE="$(lsb_release -r -s)"
-#ETHERNET="$(ip link show | grep '[0-9]: e[a-z0-9]*:' | sed -r 's/^.+ (e[a-z0-9]+):.+$/\1/')" # Ethernet adapter. NOT infallible! PROBABLY FAILS WITH 2+ ADAPTERS.
+ETHERNET="$(ip link show | grep '[0-9]: e[a-z0-9]*:' | sed -r 's/^.+ (e[a-z0-9]+):.+$/\1/')" # Ethernet adapter. NOT infallible! PROBABLY FAILS WITH 2+ ADAPTERS.
 #ETHERNET=$(ifconfig | grep '^e' | sed -r 's/:.+$//')   # Ethernet adapter (older method). NOT infallible! PROBABLY FAILS WITH 2+ ADAPTERS.
 EXTERNALIP="$(wget -qO - http://checkip.amazonaws.com)" # Server's external IP.
 INTERNALIP="$(ip route get 1.2.3.4 | awk '{print $7}')" # Server's internal IP.
@@ -886,6 +896,7 @@ if [[ "$CONFIGBASH" = 1 ]]; then
 	alias dm='dmesg -H'
 	alias egrep='egrep --color=auto -i'
 	alias fgrep='fgrep --color=auto -i'
+	alias ga='goaccess /var/log/apache2/access.log'
 	alias getip='wget -qO - http://wtfismyip.com/text'
 	alias grep='grep --color=auto -i'
 	alias j='jobs -l'
@@ -930,6 +941,9 @@ if [[ "$CONFIGBASH" = 1 ]]; then
 
 	# LINGUISTIC THINGS
 	alias cqp='cqp -eC'
+
+	# SOURCE BASHMARKS
+	source ~/.local/bin/bashmarks.sh
 
 	######################
 	# PROMPT CONFIGURATION
@@ -990,6 +1004,115 @@ if [[ "$CONFIGBASH" = 1 ]]; then
 	*)
 	    ;;
 	esac
+
+	############################################################
+	# Sensible Bash - An attempt at saner Bash defaults
+	# Maintainer: mrzool <http://mrzool.cc>
+	# Repository: https://github.com/mrzool/bash-sensible
+	# Version: 0.2.2
+	############################################################
+
+	# Unique Bash version check
+	if ((BASH_VERSINFO[0] < 4))
+	then
+	  echo "sensible.bash: Looks like you're running an older version of Bash."
+	  echo "sensible.bash: You need at least bash-4.0 or some options will not work correctly."
+	  echo "sensible.bash: Keep your software up-to-date!"
+	fi
+
+	## GENERAL OPTIONS ##
+
+	# Prevent file overwrite on stdout redirection
+	# Use `>|` to force redirection to an existing file
+	# DANGER: THIS OPTION BREAKS BASHMARKS!
+	#set -o noclobber
+
+	# Update window size after every command
+	shopt -s checkwinsize
+
+	# Automatically trim long paths in the prompt (requires Bash 4.x)
+	PROMPT_DIRTRIM=3
+
+	# Enable history expansion with space
+	# E.g. typing !!<space> will replace the !! with your last command
+	bind Space:magic-space
+
+	# Turn on recursive globbing (enables ** to recurse all directories)
+	shopt -s globstar 2> /dev/null
+
+	# Case-insensitive globbing (used in pathname expansion)
+	shopt -s nocaseglob;
+
+	## SMARTER TAB-COMPLETION (Readline bindings) ##
+
+	# Perform file completion in a case insensitive fashion
+	bind "set completion-ignore-case on"
+
+	# Treat hyphens and underscores as equivalent
+	bind "set completion-map-case on"
+
+	# Display matches for ambiguous patterns at first tab press
+	bind "set show-all-if-ambiguous on"
+
+	# Immediately add a trailing slash when autocompleting symlinks to directories
+	bind "set mark-symlinked-directories on"
+
+	## SANE HISTORY DEFAULTS ##
+
+	# Append to the history file, don't overwrite it
+	shopt -s histappend
+
+	# Save multi-line commands as one command
+	shopt -s cmdhist
+
+	# Record each line as it gets issued
+	PROMPT_COMMAND='history -a'
+
+	# Huge history. Doesn't appear to slow things down, so why not?
+	HISTSIZE=500000
+	HISTFILESIZE=100000
+
+	# Avoid duplicate entries
+	HISTCONTROL="erasedups:ignoreboth"
+
+	# Don't record some commands
+	export HISTIGNORE="&:[ ]*:exit:ls:bg:fg:history:clear"
+
+	# Use standard ISO 8601 timestamp
+	# %F equivalent to %Y-%m-%d
+	# %T equivalent to %H:%M:%S (24-hours format)
+	HISTTIMEFORMAT='%F %T '
+
+	# Enable incremental history search with up/down arrows (also Readline goodness)
+	# Learn more about this here: http://codeinthehole.com/writing/the-most-important-command-line-tip-incremental-history-searching-with-inputrc/
+	bind '"\e[A": history-search-backward'
+	bind '"\e[B": history-search-forward'
+	bind '"\e[C": forward-char'
+	bind '"\e[D": backward-char'
+
+	## BETTER DIRECTORY NAVIGATION ##
+
+	# Prepend cd to directory names automatically
+	shopt -s autocd 2> /dev/null
+	# Correct spelling errors during tab-completion
+	shopt -s dirspell 2> /dev/null
+	# Correct spelling errors in arguments supplied to cd
+	shopt -s cdspell 2> /dev/null
+
+	# This defines where cd looks for targets
+	# Add the directories you want to have fast access to, separated by colon
+	# Ex: CDPATH=".:~:~/projects" will look for targets in the current working directory, in home and in the ~/projects folder
+	CDPATH="."
+
+	# This allows you to bookmark your favorite places across the file system
+	# Define a variable containing a path and you will be able to cd into it regardless of the directory you're in
+	shopt -s cdable_vars
+
+	# Examples:
+	# export dotfiles="$HOME/dotfiles"
+	# export projects="$HOME/projects"
+	# export documents="$HOME/Documents"
+	# export dropbox="$HOME/Dropbox"
 
 EOF
 
@@ -1251,24 +1374,25 @@ if [[ "$SSHPWDSW" = 1 ]]; then
         configLine "^[# ]*HostbasedAuthentication.*$"         "HostbasedAuthentication no" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*IgnoreRhosts.*$"                    "IgnoreRhosts yes" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*KexAlgorithms.*$"                   "KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*LogLevel.*$"                        "LogLevel VERBOSE" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*LoginGraceTime.*$"                  "LoginGraceTime 20" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*MACs.*$"                            "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*MaxAuthTries.*$"                    "MaxAuthTries 3" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*MaxSessions.*$"                     "MaxSessions 4" /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*LogLevel.*$"                        "LogLevel VERBOSE"       /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*LoginGraceTime.*$"                  "LoginGraceTime 20"      /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*MACs.*$"                            "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com"              /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*MaxAuthTries.*$"                    "MaxAuthTries 3"         /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*MaxSessions.*$"                     "MaxSessions 4"          /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*PasswordAuthentication.*$"          "PasswordAuthentication yes" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*PermitEmptyPasswords.*$"            "PermitEmptyPasswords no" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*PermitRootLogin.*$"                 "PermitRootLogin no" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*Port [0-9]*$"                       "Port ${SSHPORT}" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*PrintLastLog.*$"                    "PrintLastLog yes" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*PrintMotd.*$"                       "PrintMotd yes" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*Protocol.*$"                        "Protocol 2" /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*PermitEmptyPasswords.*$"            "PermitEmptyPasswords no"    /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*PermitRootLogin.*$"                 "PermitRootLogin no"    /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*Port [0-9]*$"                       "Port ${SSHPORT}"       /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*PrintLastLog.*$"                    "PrintLastLog yes"      /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*PrintMotd.*$"                       "PrintMotd yes"         /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*Protocol.*$"                        "Protocol 2"            /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*ClientAliveCountMax.*$"             "ClientAliveCountMax 3" /etc/ssh/sshd_config >/dev/null 2>&1
         configLine "^[# ]*ClientAliveInterval.*$"             "ClientAliveInterval 5" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*StrictModes.*$"                     "StrictModes yes" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*TCPKeepAlive.*$"                    "TCPKeepAlive no" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*UsePAM.*$"                          "UsePAM no" /etc/ssh/sshd_config >/dev/null 2>&1
-        configLine "^[# ]*X11Forwarding.*$"                   "X11Forwarding no" /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*StrictModes.*$"                     "StrictModes yes"       /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*TCPKeepAlive.*$"                    "TCPKeepAlive no"       /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*UsePAM.*$"                          "UsePAM no"             /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*X11Forwarding.*$"                   "X11Forwarding no"      /etc/ssh/sshd_config >/dev/null 2>&1
+        configLine "^[# ]*Subsystem[ \\t]*sftp.*$"            ""                      /etc/ssh/sshd_config >/dev/null 2>&1
 
         # DON'T SORT THESE NEXT THREE ENTRIES
         configLine "^[# ]*HostKey.*$"                         "" /etc/ssh/sshd_config >/dev/null 2>&1
@@ -1464,6 +1588,55 @@ if [[ "$NECESSARYSW" = 1 ]]; then
     sudo apt remove --purge -y -f telnet ftp
 
 
+    # CONFIGURE NANO FOR USER
+    rm -f ~/.nanorc
+
+    tee -a ~/.nanorc <<- EOF >/dev/null 2>&1
+	#set linenumbers
+	set smooth
+	set softwrap
+	set atblanks
+	set tabsize 4
+	set smooth
+	set smarthome
+	set tabstospaces
+
+	# Paint the interface elements of nano.  These are examples;
+	# by default there are no colors, except for errorcolor.
+	set titlecolor brightwhite,blue
+	set statuscolor brightwhite,green
+	set selectedcolor brightwhite,magenta
+	set numbercolor cyan
+	set keycolor brightcyan
+	set functioncolor green
+
+EOF
+
+    # CONFIGURE NANO FOR ROOT. HAS RED HIGHLIGHTS.
+    sudo rm -f /root/.nanorc
+
+    sudo tee -a /root/.nanorc <<- EOF >/dev/null 2>&1
+	#set linenumbers
+	set smooth
+	set softwrap
+	set atblanks
+	set tabsize 4
+	set smooth
+	set smarthome
+	set tabstospaces
+
+	# Paint the interface elements of nano.  These are examples;
+	# by default there are no colors, except for errorcolor.
+	set titlecolor brightwhite,red
+	set statuscolor brightwhite,red
+	set selectedcolor brightwhite,magenta
+	set numbercolor cyan
+	set keycolor brightcyan
+	set functioncolor green
+
+EOF
+
+
     echo "${CGRN}${BLD}==========> NECESSARY SOFTWARE installation finished.${RST}"
     echo ""
 else
@@ -1528,8 +1701,13 @@ if [[ "$SERVERSW" = 1 ]]; then
     sudo apt update -y
     sudo apt upgrade -y
 
-    sudo apt install -y --install-recommends acct apachetop apt-listchanges apticron byobu ccze cpulimit discus fancontrol figlet goaccess hddtemp htop hwinfo iftop iotop iptraf iptstate iselect lm-sensors lnav locate lolcat mytop net-tools nethogs nload nmap nmon powertop rng-tools screen screenie smartmontools speedometer speedtest-cli tmux traceroute unattended-upgrades vnstat w3m whowatch
+    # INSTALL THE FOLLOWING SOFTWARE IN ALL CASES
+    sudo apt install -y --install-recommends acct apachetop apt-listchanges apticron byobu ccze cpulimit discus figlet goaccess htop hwinfo iftop iotop iptraf iptstate iselect lnav locate lolcat mytop net-tools nethogs nload nmap nmon pv rng-tools screen screenie speedometer speedtest-cli tmux traceroute unattended-upgrades vnstat w3m whowatch
 
+    # ONLY INSTALL THE FOLLOWING SOFTWARE IF THE INSTALL IS *NOT* A VPS
+    if ! [[ "$VIRTUALSRV" = 1 ]]; then
+        sudo apt install -y --install-recommends fancontrol hddtemp lm-sensors powertop smartmontools
+    fi
 
     # THIS IS INSTALLED ALONE BECAUSE --install-recommends PULLS IN FAR TO MUCH USELESS SOFTWARE
     sudo apt install -y sysstat
@@ -1716,7 +1894,7 @@ if [[ "$VIRTUALSRV" = 1 ]]; then
     # REMOVE UNNECESSARY OR RISKY SOFTWARE
     # This is done one-package-per-command because otherwise if a single program
     # is not installed, it will cause the removal of all the others to fail. +++++
-    sudo apt remove --purge -y -f fancontrol thermald smartmontools lm-sensors powertop hddtemp psensor libsensors4
+    sudo apt remove --purge -y -f fancontrol thermald smartmontools lm-sensors powertop hddtemp psensor libsensors4 exfat-fuse exfat-utils
     sudo apt autoremove -y
 
     echo "${CGRN}${BLD}==========> VIRTUAL SERVER configured.${RST}"
@@ -1809,6 +1987,39 @@ EOF
 else
     echo "${CORG}${BLD}==========> Skipping disabling of IPV6 SUPPORT...${RST}"
 fi
+
+
+########################################
+# SET UP SSL (HTTPS) USING LET'S ENCRYPT CERTIFICATE.
+########################################
+if [[ "$SSLSW" = 1 ]]; then
+
+    echo ""
+    echo "${CLBL}${BLD}==========> Installing SSL (HTTPS) with Let's Encrypt certificate...${RST}"
+
+    # ADD CERTBOT PPA
+    sudo add-apt-repository ppa:certbot/certbot
+
+    # UPDATE DISTRO SOFTWARE
+    sudo apt update -y
+    sudo apt autoremove -y
+    sudo apt upgrade -y
+
+    # INSTALL SOFTWARE
+    sudo apt install -y --install-recommends certbot python-certbot-apache
+
+    # RUN CERTBOT CERTIFICATE GETTER AND INSTALLER
+    sudo certbot --apache
+
+    echo "${CGRN}${BLD}==========> Installation of SSL (HTTPS) with Let's Encrypt certificate completed.${RST}"
+        echo ""
+    else
+        echo "${CORG}${BLD}==========> Skipping installation of SSL (HTTPS) with Let's Encrypt certificate...${RST}"
+    fi
+fi
+
+
+
 
 
 ########################################
@@ -2225,7 +2436,7 @@ if [[ "$CQPWEBSW" = 1 ]]; then
     configLine "^[; \t]*upload_max_filesize[ =]*.*"       "upload_max_filesize = 128M"      /etc/php/${PHPVER}/apache2/php.ini     >/dev/null 2>&1
     configLine "^[; \t]*post_max_size[ =]*.*"             "post_max_size = 128M"            /etc/php/${PHPVER}/apache2/php.ini     >/dev/null 2>&1
     configLine "^[; \t]*mysqli.allow_local_infile[ =]*.*" "mysqli.allow_local_infile = On"  /etc/php/${PHPVER}/apache2/php.ini     >/dev/null 2>&1
-    configLine "^[; \t]*expose_php[ =]*.*"                "expose_php = 0"                  /etc/php/${PHPVER}/apache2/php.ini     >/dev/null 2>&1
+    configLine "^[; \t]*expose_php[ =]*.*"                "expose_php = Off"                /etc/php/${PHPVER}/apache2/php.ini     >/dev/null 2>&1
     configLine "^[; \t]*error_log[ =]*php_errors.log*.*"  "error_log = /var/log/php_errors.log" /etc/php/${PHPVER}/apache2/php.ini >/dev/null 2>&1
     configLine "^[; \t]*log_errors[ =]*.*"                "log_errors = 1"                  /etc/php/${PHPVER}/apache2/php.ini     >/dev/null 2>&1
 
@@ -3728,15 +3939,35 @@ if [[ "$SECURITYSW" = 1 ]]; then
     ####################
     echo ""
     echo "${CLBL}==========> Hardening Apache server a wee bit...${RST}"
-    configLine "^[# ]*ServerTokens[ ].*"        "ServerTokens Prod"     /etc/apache2/apache2.conf
-    configLine "^[# ]*ServerSignature[ ].*"     "ServerSignature Off"   /etc/apache2/apache2.conf
-    configLine "^[# ]*TraceEnable[ ].*"         "TraceEnable Off"       /etc/apache2/apache2.conf
+
+    # apache2.conf
+    configLine "^[# ]*ServerTokens[ ].*"        "ServerTokens Prod"     /etc/apache2/apache2.conf  >/dev/null 2>&1
+    configLine "^[# ]*ServerSignature[ ].*"     "ServerSignature Off"   /etc/apache2/apache2.conf  >/dev/null 2>&1
+    configLine "^[# ]*TraceEnable[ ].*"         "TraceEnable Off"       /etc/apache2/apache2.conf  >/dev/null 2>&1
+
+    # security.conf
+    configLine "^[# ]*ServerTokens[ ].*"        "ServerTokens Prod"     /etc/apache2/conf-available/security.conf  >/dev/null 2>&1
+    configLine "^[# ]*ServerSignature[ ].*"     "ServerSignature Off"   /etc/apache2/conf-available/security.conf  >/dev/null 2>&1
+    configLine "^[# ]*TraceEnable[ ].*"         "TraceEnable Off"       /etc/apache2/conf-available/security.conf  >/dev/null 2>&1
+
 
     ####################
     # SECURE SHARED MEMORY
-    # You may or may not want to modify the 'size=512m' parameter.
+    # You may or may not want to modify the 'size=2048m' parameter.
     ####################
-    echo -e "tmpfs   /run/shm   tmpfs   rw,noexec,nosuid,nodev,size=512m   0   0\\n" | sudo tee -a /etc/fstab >/dev/null 2>&1
+    # IF BACKUP EXISTS, RESTORE IT BEFORE PROCEEDING. OTHERWISE, MAKE BACKUP
+    if [[ -f "/etc/fstab.BAK" ]]; then
+        # RESTORE BACKUP
+        sudo rm /etc/fstab
+        sudo cp /etc/fstab.BAK /etc/fstab
+    else
+        # MAKE BACKUP
+        sudo cp /etc/fstab /etc/fstab.BAK
+    fi
+
+    echo -e "tmpfs   /run/shm   tmpfs   rw,noexec,nosuid,nodev,size=2048m   0   0\\n" | sudo tee -a /etc/fstab >/dev/null 2>&1
+
+
 
     echo "${CGRN}${BLD}==========> SECURITY SOFTWARE installation finished.${RST}"
     echo ""
@@ -3786,6 +4017,25 @@ if [[ "$UFWSW" = 1 ]]; then
     if [[ ! -z "${IMAPSPORT}" ]]; then sudo ufw limit "${IMAPSPORT}"    comment 'IMAPS port'; fi
     if [[ ! -z "${POP3PORT}" ]];  then sudo ufw limit "${POP3PORT}"     comment 'POP3 port'; fi
     if [[ ! -z "${IMAPPORT}" ]];  then sudo ufw limit "${IMAPPORT}"     comment 'IMAP port'; fi
+
+    # DISABLE IPV6 IN UFW IF DESIRED
+    DISABLEIPV6=1
+    if [[ "$DISABLEIPV6" = 1 ]]; then
+
+        if [[ -f "/etc/default/ufw.BAK" ]]; then
+            # RESTORE BACKUP
+            sudo rm /etc/default/ufw
+            sudo cp /etc/default/ufw.BAK /etc/default/ufw
+        else
+            # MAKE BACKUP
+            sudo cp /etc/default/ufw /etc/default/ufw.BAK
+        fi
+
+        configLine "^[# ]*IPV6.*$"            "IPV6=no" /etc/default/ufw >/dev/null 2>&1
+
+        echo "==================> UFW RECONFIGURED (OR ATEMPTED)"
+    fi
+
 
     # Turn on logging, reload and enable UFW
     sudo ufw logging on
@@ -3865,7 +4115,7 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
         ############### INSTALL FAIL2BAN AND ASSOCIATED SOFTWARE ###############
         sudo apt update -y
         sudo apt autoremove -y
-        sudo apt install -y --install-recommends --install-suggests fail2ban iptables-persistent logcheck python3-dnspython geoip-bin geoip-database-extra
+        sudo apt install -y --install-recommends --install-suggests fail2ban iptables-persistent netfilter-persistent logcheck python3-dnspython geoip-bin geoip-database-extra
 
         ############### MODIFY FAIL2BAN.CONF FILE ###############
         configLine "^[# ]*dbpurgeage.*$"         "dbpurgeage = 648000" /etc/fail2ban/fail2ban.conf >/dev/null 2>&1
@@ -3883,30 +4133,32 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		[DEFAULT]
 
 		############### MISCELLANEOUS OPTIONS ###############
-		ignorself = true
-		ignoreip = ${WHITELISTEDIPS}
-		bantime  = 24h
-		findtime = 24h
-		maxretry = 4
-		backend = auto
-		usedns = warn
+		ignorself   = true
+		ignoreip    = ${WHITELISTEDIPS}
+		bantime     = 86400
+		findtime    = 86400
+		maxretry    = 4
+		#backend    = auto
+		backend     = polling
+		usedns      = warn
 		logencoding = auto
-		mode = normal
-		filter = %(__name__)s[mode=%(mode)s]
+		mode        = normal
+		filter      = %(__name__)s[mode=%(mode)s]
 		dbpurgeage  = 648000
 
 		############### ACTIONS ###############
 		destemail = ${ADMINMAILADDR}
-		sender = fail2ban@${SERVERALIAS}
-		#mta = sendmail
-		mta = mail
-		#protocol = tcp
-		protocol = all
-		port = 0:65535
+		sender    = fail2ban@${SERVERALIAS}
+		#mta       = sendmail
+		mta       = mail
+		#protocol  = tcp
+		protocol  = all
+		port      = 0:65535
 		fail2ban_agent = Fail2Ban/%(fail2ban_version)s
 
 		# ACTION SHORTCUTS. TO BE USED TO DEFINE ACTION PARAMETER
-		banaction = iptables-multiport
+		#banaction = iptables-multiport
+		banaction = iptables-allports
 		banaction_allports = iptables-allports
 
 		# THE SIMPLEST ACTION TO TAKE: BAN ONLY
@@ -3936,13 +4188,13 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		# TO USE MORE AGGRESSIVE SSHD MODES SET FILTER PARAMETER "MODE" IN JAIL.LOCAL:
 		# NORMAL (DEFAULT), DDOS, EXTRA OR AGGRESSIVE (COMBINES ALL).
 		# SEE "TESTS/FILES/LOGS/SSHD" OR "FILTER.D/SSHD.CONF" FOR USAGE EXAMPLE AND DETAILS.
-		enabled = true
-		mode    = aggressive
-		port    = ssh,${SSHPORT}
-		logpath = %(sshd_log)s
-		backend = %(sshd_backend)s
-		bantime = 24h
-		findtime = 24h
+		enabled  = true
+		mode     = aggressive
+		port     = ssh,${SSHPORT}
+		logpath  = %(sshd_log)s
+		backend  = %(sshd_backend)s
+		bantime  = 86400
+		findtime = 86400
 		maxretry = 3
 
 		[dropbear]
@@ -3950,8 +4202,8 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port     = ssh,${SSHPORT}
 		logpath  = %(dropbear_log)s
 		backend  = %(dropbear_backend)s
-		bantime  = 72h
-		findtime = 12h
+		bantime  = 604800
+		findtime = 86400
 
 
 		##### HTTP servers ######
@@ -3968,48 +4220,48 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_access_log)s
-		bantime  = 7d
-		findtime = 24h
+		bantime  = 604800
+		findtime = 86400
 		maxretry = 1
 
 		[apache-noscript]
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_error_log)s
-		bantime  = 7d
-		findtime = 48h
+		bantime  = -1
+		findtime = 86400
 		maxretry = 1
 
 		[apache-overflows]
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_error_log)s
-		bantime  = 72h
-		findtime = 12h
+		bantime  = -1
+		findtime = 86400
 		maxretry = 2
 
 		[apache-nohome]
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_error_log)s
-		bantime  = 72h
-		findtime = 12h
+		bantime  = 259200
+		findtime = 86400
 		maxretry = 2
 
 		[apache-botsearch]
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_error_log)s
-		bantime  = 72h
-		findtime = 12h
+		bantime  = 259200
+		findtime = 86400
 		maxretry = 2
 
 		[apache-fakegooglebot]
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_access_log)s
-		bantime  = 72h
-		findtime = 24h
+		bantime  = 604800
+		findtime = 86400
 		maxretry = 1
 		ignorecommand = %(ignorecommands_dir)s/apache-fakegooglebot <ip>
 
@@ -4017,16 +4269,16 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_error_log)s
-		bantime  = 72h
-		findtime = 12h
+		bantime  = 259200
+		findtime = 86400
 		maxretry = 2
 
 		[apache-shellshock]
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_error_log)s
-		bantime  = 72h
-		findtime = 12h
+		bantime  = 259200
+		findtime = 86400
 		maxretry = 1
 
 		# BAN ATTACKERS THAT TRY TO USE PHP'S URL-FOPEN() FUNCTIONALITY
@@ -4034,33 +4286,33 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		# OF USAGE IN PRODUCTION ENVIRONMENTS.
 
 		[php-url-fopen]
-		enabled = true
-		port    = http,https
-		logpath = %(apache_access_log)s
-		bantime  = 72h
-		findtime = 12h
+		enabled  = true
+		port     = http,https
+		logpath  = %(apache_access_log)s
+		bantime  = 259200
+		findtime = 86400
 
 
 		###### Web Applications ######
 
 		[monit]
 		#Ban clients brute-forcing the monit gui login
-		enabled  = false
-		port = 2812
-		logpath  = /var/log/monit
+		enabled = false
+		port    = 2812
+		logpath = /var/log/monit
 
 
 		###### Mail servers ######
 
 		[postfix]
 		# To use another modes set filter parameter "mode" in jail.local:
-		enabled = true
-		mode    = more
-		port    = smtp,465,submission,${SMTPPORT},${POP3PORT},${IMAPPORT}
-		logpath = %(postfix_log)s
-		backend = %(postfix_backend)s
-		bantime  = 72h
-		findtime = 12h
+		enabled  = true
+		mode     = more
+		port     = smtp,465,submission,${SMTPPORT},${POP3PORT},${IMAPPORT}
+		logpath  = %(postfix_log)s
+		backend  = %(postfix_backend)s
+		bantime  = 259200
+		findtime = 86400
 
 		[postfix-rbl]
 		enabled  = true
@@ -4068,8 +4320,8 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		port     = smtp,465,submission,${SMTPPORT},${POP3PORT},${IMAPPORT}
 		logpath  = %(postfix_log)s
 		backend  = %(postfix_backend)s
-		bantime  = 72h
-		findtime = 12h
+		bantime  = 259200
+		findtime = 86400
 		maxretry = 1
 
 		[sendmail-auth]
@@ -4101,16 +4353,16 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		# "WARN" LEVEL BUT OVERALL AT THE SMALLER FILESIZE.
 		logpath  = %(postfix_log)s
 		backend  = %(postfix_backend)s
-		bantime  = 72h
-		findtime = 12h
+		bantime  = 259200
+		findtime = 86400
 
 		[ufw-port-scan]
 		enabled   = true
 		port      = all
 		filter    = ufw-port-scan
 		logpath   = /var/log/ufw.log
-		bantime   = 31536000
-		findtime  = 1w
+		bantime   = 604800
+		findtime  = 86400
 		maxretry  = 3
 
 
@@ -4126,8 +4378,8 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		enabled   = true
 		logpath   = /var/log/fail2ban.log
 		banaction = %(banaction_allports)s
-		bantime   = 26w
-		findtime  = 3d
+		bantime   = 2419000
+		findtime  = 604800
 
 
 		# Generic filter for PAM. Has to be used with action which bans all
@@ -4139,16 +4391,16 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		banaction = %(banaction_allports)s
 		logpath   = %(syslog_authpriv)s
 		backend   = %(syslog_backend)s
-		bantime   = 72h
-		findtime  = 12h
+		bantime   = 259200
+		findtime  = 86400
 
 		[phpmyadmin-syslog]
 		enabled  = true
 		port     = http,https
 		logpath  = %(syslog_authpriv)s
 		backend  = %(syslog_backend)s
-		bantime  = 72h
-		findtime = 12h
+		bantime  = 259200
+		findtime = 86400
 
 		[zoneminder]
 		# ZONEMINDER HTTP/HTTPS WEB INTERFACE AUTH
@@ -4156,17 +4408,18 @@ if [[ "$FAIL2BANSW" = 1 ]]; then
 		enabled  = true
 		port     = http,https
 		logpath  = %(apache_error_log)s
-		bantime  = 72h
-		findtime = 12h
+		bantime  = 259200
+		findtime = 86400
 
 EOF
 
         ############### CHANGE PROTOCOL FROM 'TCP' TO 'ALL' IN ACTIONS ###############
-        configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/dshield.conf >/dev/null 2>&1
-        configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/mynetwatchman.conf >/dev/null 2>&1
-        configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/nftables.conf >/dev/null 2>&1
-        configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/pf.conf >/dev/null 2>&1
-        configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/firewallcmd-common.conf >/dev/null 2>&1
+#         configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/dshield.conf >/dev/null 2>&1
+#         configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/mynetwatchman.conf >/dev/null 2>&1
+#         configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/nftables.conf >/dev/null 2>&1
+#         configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/nftables-common.conf >/dev/null 2>&1
+#         configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/pf.conf >/dev/null 2>&1
+#         configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/firewallcmd-common.conf >/dev/null 2>&1
         configLine "^[# \\t]*protocol[ =\\t].*$"  "protocol = all" /etc/fail2ban/action.d/iptables-common.conf >/dev/null 2>&1
 
 
@@ -4180,6 +4433,7 @@ EOF
         # Stunningly, even the development versions of fail2ban use Debian
         # some of which are simply wrong on Ubuntu.
 
+        sudo rm -f /etc/fail2ban/paths-ubuntu.conf
         sudo touch /etc/fail2ban/paths-ubuntu.conf
 
         sudo tee -a /etc/fail2ban/paths-ubuntu.conf <<- EOF >/dev/null 2>&1
@@ -4207,6 +4461,9 @@ EOF
         ############### BLOCK PORT SCANNERS LOGGED BY UFW ###############
 
         # Create filter file for UFW port scan blocker
+        sudo rm -f /etc/fail2ban/filter.d/ufw-port-scan.conf
+        sudo touch /etc/fail2ban/filter.d/ufw-port-scan.conf
+
         sudo tee -a /etc/fail2ban/filter.d/ufw-port-scan.conf <<- EOF >/dev/null 2>&1
 		[Definition]
 		failregex = .*\[UFW BLOCK\] IN=.* SRC=<HOST>
@@ -4228,18 +4485,25 @@ EOF
         # Modify the too-strict regex in apache-badbots.conf
         # OLD: failregex = ^<HOST> -.*"(GET|POST).*HTTP.*"(?:%(badbots)s|%(badbotscustom)s)"$
         # NEW: failregex = ^<HOST> -.*"(GET|POST).*HTTP.*"(.*?:%(badbots)s|%(badbotscustom)s).*"$
-        configLine "failregex = \^<HOST> -.\*\"(GET\|POST).\*HTTP.\*\"(?:%(badbots)s\|%(badbotscustom)s)\"\$"  "failregex = ^<HOST> -.*\"(GET|POST).*HTTP.*\"(.*?:%(badbots)s|%(badbotscustom)s).*\"$"  ~/tmp/fail2ban/config/filter.d/apache-badbots.conf
+        configLine "failregex = \^<HOST> -.\*\"(GET\|POST).\*HTTP.\*\"(?:%(badbots)s\|%(badbotscustom)s)\"\$"  "failregex = ^<HOST> -.*\"(GET|POST).*HTTP.*\"(.*?:%(badbots)s|%(badbotscustom)s).*\"$"  ~/tmp/fail2ban/config/filter.d/apache-badbots.conf >/dev/null 2>&1
+
+#         # TEMPORARILY DISABLED -- SITE DOWN.
+#         # Replace the list of bad bots with a better one.
+#         #BADBOTLIST=$(wget -q -O- "https://raw.githubusercontent.com/mitchellkrogza/apache-ultimate-bad-bot-blocker/master/_generator_lists/bad-user-agents.list" | uniq | sed -e 's/\\ / /g' | sed -e 's/\([.\:|()+]\)/\\\1/g' | tr '\n' '|' | sed -e 's/|$//g')
+#
+        # VARIABLE SET MANUALLY DUE TO PROBLEMS ACCESSING URL
+        BADBOTLIST="360Spider|404checker|404enemy|80legs|Abonti|Aboundex|Aboundexbot|Acunetix|ADmantX|AfD-Verbotsverfahren|AhrefsBot|AIBOT|AiHitBot|Aipbot|Alexibot|Alligator|AllSubmitter|AlphaBot|Anarchie|Apexoo|archive\\.org_bot|arquivo\\.pt|arquivo-web-crawler|ASPSeek|Asterias|Attach|autoemailspider|AwarioRssBot|AwarioSmartBot|BackDoorBot|Backlink-Ceck|backlink-check|BacklinkCrawler|BackStreet|BackWeb|Badass|Bandit|Barkrowler|BatchFTP|Battleztar Bazinga|BBBike|BDCbot|BDFetch|BetaBot|Bigfoot|Bitacle|Blackboard|Black Hole|BlackWidow|BLEXBot|Blow|BlowFish|Boardreader|Bolt|BotALot|Brandprotect|Brandwatch|Buddy|BuiltBotTough|BuiltWith|Bullseye|BunnySlippers|BuzzSumo|Calculon|CATExplorador|CazoodleBot|CCBot|Cegbfeieh|CheeseBot|CherryPicker|CheTeam|ChinaClaw|Chlooe|Claritybot|Cliqzbot|Cloud mapping|coccocbot-web|Cogentbot|cognitiveseo|Collector|com\\.plumanalytics|Copier|CopyRightCheck|Copyscape|Cosmos|Craftbot|crawler4j|crawler\\.feedback|crawl\\.sogou\\.com|CrazyWebCrawler|Crescent|CrunchBot|CSHttp|Curious|Custo|DatabaseDriverMysqli|DataCha0s|DBLBot|demandbase-bot|Demon|Deusu|Devil|Digincore|DigitalPebble|DIIbot|Dirbuster|Disco|Discobot|Discoverybot|Dispatch|DittoSpyder|DnyzBot|DomainAppender|DomainCrawler|DomainSigmaCrawler|DomainStatsBot|Dotbot|Download Wonder|Dragonfly|Drip|DSearch|DTS Agent|EasyDL|Ebingbong|eCatch|ECCP/1\\.0|Ecxi|EirGrabber|EMail Siphon|EMail Wolf|EroCrawler|evc-batch|Evil|Exabot|Express WebPictures|ExtLinksBot|Extractor|ExtractorPro|Extreme Picture Finder|EyeNetIE|Ezooms|facebookscraper|FDM|FemtosearchBot|FHscan|Fimap|Firefox/7\\.0|FlashGet|Flunky|Foobot|Freeuploader|FrontPage|FyberSpider|Fyrebot|GalaxyBot|Genieo|GermCrawler|Getintent|GetRight|GetWeb|Gigablast|Gigabot|G-i-g-a-b-o-t|Go-Ahead-Got-It|Gotit|GoZilla|Go!Zilla|Grabber|GrabNet|Grafula|GrapeFX|GrapeshotCrawler|GridBot|GT\\:\\:WWW|Haansoft|HaosouSpider|Harvest|Havij|HEADMasterSEO|heritrix|Heritrix|Hloader|HMView|HTMLparser|HTTP\\:\\:Lite|HTTrack|Humanlinks|HybridBot|Iblog|IDBot|Id-search|IlseBot|Image Fetch|Image Sucker|IndeedBot|Indy Library|InfoNaviRobot|InfoTekies|instabid|Intelliseek|InterGET|Internet Ninja|InternetSeer|internetVista monitor|ips-agent|Iria|IRLbot|Iskanie|IstellaBot|JamesBOT|Jbrofuzz|JennyBot|JetCar|Jetty|JikeSpider|JOC Web Spider|Joomla|Jorgee|JustView|Jyxobot|Kenjin Spider|Keyword Density|Kozmosbot|Lanshanbot|Larbin|LeechFTP|LeechGet|LexiBot|Lftp|LibWeb|Libwhisker|Lightspeedsystems|Likse|Linkdexbot|LinkextractorPro|LinkpadBot|LinkScan|LinksManager|LinkWalker|LinqiaMetadataDownloaderBot|LinqiaRSSBot|LinqiaScrapeBot|Lipperhey|Lipperhey Spider|Litemage_walker|Lmspider|LNSpiderguy|Ltx71|lwp-request|LWP\\:\\:Simple|lwp-trivial|Magnet|Mag-Net|magpie-crawler|Mail\\.RU_Bot|Majestic12|Majestic-SEO|Majestic SEO|MarkMonitor|MarkWatch|masscan|Mass Downloader|Mata Hari|MauiBot|meanpathbot|Meanpathbot|MeanPath Bot|Mediatoolkitbot|mediawords|MegaIndex\\.ru|Metauri|MFC_Tear_Sample|Microsoft Data Access|Microsoft URL Control|MIDown tool|MIIxpc|Mister PiX|MJ12bot|Mojeek|Mojolicious|Morfeus Fucking Scanner|Mr\\.4x3|MSFrontPage|MSIECrawler|Msrabot|muhstik-scan|Musobot|Name Intelligence|Nameprotect|Navroad|NearSite|Needle|Nessus|NetAnts|Netcraft|netEstate NE Crawler|NetLyzer|NetMechanic|NetSpider|Nettrack|Net Vampire|Netvibes|NetZIP|NextGenSearchBot|Nibbler|NICErsPRO|Niki-bot|Nikto|NimbleCrawler|Nimbostratus|Ninja|Nmap|NPbot|Nutch|oBot|Octopus|Offline Explorer|Offline Navigator|OnCrawl|Openfind|OpenLinkProfiler|Openvas|OpenVAS|OrangeBot|OrangeSpider|OutclicksBot|OutfoxBot|PageAnalyzer|Page Analyzer|PageGrabber|page scorer|PageScorer|Pandalytics|Panscient|Papa Foto|Pavuk|pcBrowser|PECL\\:\\:HTTP|PeoplePal|PHPCrawl|Picscout|Picsearch|PictureFinder|Pimonster|Pi-Monster|Pixray|PleaseCrawl|plumanalytics|Pockey|POE-Component-Client-HTTP|Probethenet|ProPowerBot|ProWebWalker|Psbot|Pump|PxBroker|PyCurl|QueryN Metasearch|Quick-Crawler|RankActive|RankActiveLinkBot|RankFlex|RankingBot|RankingBot2|Rankivabot|RankurBot|RealDownload|Reaper|RebelMouse|Recorder|RedesScrapy|ReGet|RepoMonkey|Ripper|RocketCrawler|Rogerbot|RSSingBot|s1z\\.ru|SalesIntelligent|SBIder|ScanAlert|Scanbot|scan\\.lol|ScoutJet|Scrapy|Screaming|ScreenerBot|Searchestate|SearchmetricsBot|Semrush|SemrushBot|SEOkicks|SEOkicks-Robot|SEOlyticsCrawler|Seomoz|SEOprofiler|seoscanners|SeoSiteCheckup|SEOstats|serpstatbot|sexsearcher|Shodan|Siphon|SISTRIX|Sitebeam|SiteExplorer|Siteimprove|SiteLockSpider|SiteSnagger|SiteSucker|Site Sucker|Sitevigil|SlySearch|SmartDownload|SMTBot|Snake|Snapbot|Snoopy|SocialRankIOBot|Sociscraper|sogouspider|Sogou web spider|Sosospider|Sottopop|SpaceBison|Spammen|SpankBot|Spanner|sp_auditbot|Spbot|Spinn3r|SputnikBot|spyfu|Sqlmap|Sqlworm|Sqworm|Steeler|Stripper|Sucker|Sucuri|SuperBot|SuperHTTP|Surfbot|SurveyBot|Suzuran|Swiftbot|sysscan|Szukacz|T0PHackTeam|T8Abot|tAkeOut|Teleport|TeleportPro|Telesoft|Telesphoreo|Telesphorep|The Intraformant|TheNomad|Thumbor|TightTwatBot|Titan|Toata|Toweyabot|Tracemyfile|Trendiction|Trendictionbot|trendiction\\.com|trendiction\\.de|True_Robot|Turingos|Turnitin|TurnitinBot|TwengaBot|Twice|Typhoeus|UnisterBot|Upflow|URLy\\.Warning|URLy Warning|Vacuum|Vagabondo|VB Project|VCI|VeriCiteCrawler|VidibleScraper|Virusdie|VoidEYE|Voil|Voltron|Wallpapers/3\\.0|WallpapersHD|WASALive-Bot|WBSearchBot|Webalta|WebAuto|Web Auto|WebBandit|WebCollage|Web Collage|WebCopier|WEBDAV|WebEnhancer|Web Enhancer|WebFetch|Web Fetch|WebFuck|Web Fuck|WebGo IS|WebImageCollector|WebLeacher|WebmasterWorldForumBot|webmeup-crawler|WebPix|Web Pix|WebReaper|WebSauger|Web Sauger|Webshag|WebsiteExtractor|WebsiteQuester|Website Quester|Webster|WebStripper|WebSucker|Web Sucker|WebWhacker|WebZIP|WeSEE|Whack|Whacker|Whatweb|Who\\.is Bot|Widow|WinHTTrack|WiseGuys Robot|WISENutbot|Wonderbot|Woobot|Wotbox|Wprecon|WPScan|WWW-Collector-E|WWW-Mechanize|WWW\\:\\:Mechanize|WWWOFFLE|x09Mozilla|x22Mozilla|Xaldon_WebSpider|Xaldon WebSpider|Xenu|xpymep1\\.exe|YoudaoBot|Zade|Zauba|zauba\\.io|Zermelo|Zeus|zgrab|Zitebot|ZmEu|ZumBot|ZyBorg|robertdavidgraham|NetSystemsResearch"
+
+        configLine "^[ #]*badbots =.*$"  "badbots = ${BADBOTLIST}"  ~/tmp/fail2ban/config/filter.d/apache-badbots.conf >/dev/null 2>&1
+
 
         # BACKUP apache-badbots.conf IF THERE IS NO BACKUP
         if ! [[ -f /etc/fail2ban/filter.d/apache-badbots.conf.BAK ]]; then
-            sudo mv /etc/fail2ban/filter.d/apache-badbots.conf /etc/default/sysstat /etc/default/sysstat.BAK
+            sudo mv /etc/fail2ban/filter.d/apache-badbots.conf /etc/fail2ban/filter.d/apache-badbots.conf.BAK
         fi
 
         # Install the new apache-badbots.conf
         sudo cp ~/tmp/fail2ban/config/filter.d/apache-badbots.conf /etc/fail2ban/filter.d/apache-badbots.conf
-
-        # REMOVE TEMP FILES
-        sudo rm -rf ~/tmp/fail2ban
 
 
         ############### CREATE FAIL2BAN MONITORING SCRIPT
@@ -4253,32 +4517,34 @@ EOF
 		#!/bin/bash
 
 		# Fail2Ban Log Check.
-		# Adapted from script by Abhishek Ghosh at https://thecustomizewindows.com
+		# Adapted from script by Abhishek Ghosh at https://github.com/AbhishekGhosh/Fail2Ban-Monitoring-Bash-Script
 
 		echo ""
 		echo "----------------------------------------------------------------------------"
 		echo "Bad IPs from only from /var/log/fail2ban.log alone:"
 		echo "-Number-IP------------------------------------------------------------------"
-		grep "Ban " /var/log/fail2ban.log | grep `date +%Y-%m-%d` | awk '{print $NF}' | sort | awk '{print $1,"("$1")"}' | logresolve | uniq -c | sort
+		grep "Ban " /var/log/fail2ban.log | grep `date +%Y-%m-%d` | awk '{print \$NF}' | sort | awk '{print \$1,"("\$1")"}' | logresolve | uniq -c | sort
 		echo ""
 		echo "----------------------------------------------------------------------------"
 		echo "Number of password attempts failed from all non-gzipped fail2ban.log files:"
 		echo "-Number---MM--DD------------------------------------------------------------"
-		cat /var/log/auth.log* | grep 'Failed password' | grep sshd | awk '{print $1,$2}' | sort | uniq -c
+		cat /var/log/auth.log* | grep 'Failed password' | grep sshd | awk '{print \$1,\$2}' | sort | uniq -c
 		echo ""
 		echo "----------------------------------------------------------------------------"
 		echo "You unbanned:"
 		echo "-Number-IP------------------------------------------------------------------"
-		grep "Unban " /var/log/fail2ban.log | grep `date +%Y-%m-%d` | awk '{print $NF}' | sort | awk '{print $1,"("$1")"}' | logresolve | uniq -c | sort
+		grep "Unban " /var/log/fail2ban.log | grep `date +%Y-%m-%d` | awk '{print \$NF}' | sort | awk '{print \$1,"("\$1")"}' | logresolve | uniq -c | sort
 		echo ""
 		echo "----------------------------------------------------------------------------"
 		echo "Countries from fail2ban.log who are Banned:"
 		echo "-Number-ASN-ISP-------------------------------------------------------------"
-		zgrep -h "Ban " /var/log/fail2ban.log* | awk '{print $NF}' | sort | uniq -c | xargs -n 1 geoiplookup { } | sort | uniq -c | sort | sed -r 's/ GeoIP Country Edition://g' | $
+		zgrep -h "Ban " /var/log/fail2ban.log* | awk '{print $NF}' | sort | uniq -c | xargs -n 1 geoiplookup { } | sort | uniq -c | sort | sed -r 's/ GeoIP Country Edition://g' | sed -r 's/ GeoIP ASNum Edition://g'
 		echo "----------------------------------------------------------------------------"
 		echo ""
 
 EOF
+        chmod ug+x ~/bin/f2b-monitor.sh
+
 
         ############### CREATE FAIL2BAN BLOCKED IP LISTING SCRIPT
         if [[ -f ~/bin/f2b-banned.sh ]]; then
@@ -4289,12 +4555,11 @@ EOF
 
         tee -a ~/bin/f2b-banned.sh <<- EOF >/dev/null 2>&1
 		#!/bin/bash
-		awk '($(NF-1) = /Ban/){print $NF,"("$NF")"}' /var/log/fail2ban.log | sort | logresolve | uniq -c | sort -n | lnav
+		awk '(\$(NF-1) = /Ban/){print \$NF,"("\$NF")"}' /var/log/fail2ban.log | sort | logresolve | uniq -c | sort -n | lnav
 
 EOF
         # Make the script executable
         sudo chmod ug+x ~/bin/f2b-banned.sh
-
 
 
         ############### RESTART FAIL2BAN ###############
@@ -4304,6 +4569,10 @@ EOF
 
         # Enable fail2ban on startup
         sudo systemctl enable fail2ban
+
+
+        # REMOVE TEMP FILES
+        sudo rm -rf ~/tmp/fail2ban
 
 
         echo "${CGRN}${BLD}==========> FAIL2BAN installation finished.${RST}"
@@ -4335,6 +4604,10 @@ if [[ "$APACHESECSW" = 1 ]]; then
     sudo apt autoremove -y
     sudo apt install -y --install-recommends apache2 apache2-dev apache2-utils libapache2-mod-evasive ca-certificates dh-autoreconf gawk git iputils-ping libapache2-mod-security2 libcurl4-gnutls-dev libexpat1-dev libgeoip-dev liblmdb-dev libpcre++-dev libpcre3-dev libssl-dev libtool libxml2 libxml2-dev libyajl-dev locales lua5.2-dev pkgconf wget zlib1g-dev zlibc
 
+    # CREATE LOG FILE AND SET ITS OWNSERSHIP AND PERMISSIONS
+    sudo touch /var/log/apache2/modsec_audit.log
+    sudo chown www-data:www-data /var/log/apache2/modsec_audit.log
+    sudo chmod 660 /var/log/apache2/modsec_audit.log
 
     #########################
     # CONFIGURE MOD_EVASIVE
@@ -4367,12 +4640,12 @@ if [[ "$APACHESECSW" = 1 ]]; then
     # MODIFY MOD_EVASIVE CONFIG FILE
     sudo tee -a /etc/apache2/mods-enabled/evasive.conf <<- EOF >/dev/null 2>&1
 	<IfModule mod_evasive20.c>
-	     DOSHashTableSize    6194
-	     DOSPageCount        4
+	     DOSHashTableSize    3097
+	     DOSPageCount        5
 	     DOSSiteCount        50
 	     DOSPageInterval     1
 	     DOSSiteInterval     1
-	     DOSBlockingPeriod   600
+	     DOSBlockingPeriod   60
 	${EVASIVE_WHITELISTEDIPS}
 	    DOSEmailNotify      ${ADMINMAILADDR}
 	#   DOSSystemCommand    "su - someuser -c '/sbin/... %s ...'"
