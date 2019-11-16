@@ -3,8 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-11-11
-# VERSION:  85
+# DATE:     2019-11-15
+# VERSION:  86
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes an install of certain versions of Ubuntu or Debian and sets up Open
@@ -25,7 +25,15 @@ SCRIPTNAME="cqpweb-instabox.sh"
 
 # CHANGE LOG:
 #
-# V85
+# v86
+# - Refined mod_evasive configuration.
+# - Added a series of rule exceptions to mod_security to prevent false positives (and thus
+#   breakages and unwanted bans) when using various CQPweb functions at paranoia level 2.
+# - Added whitelisted IPs to mod_security configuration
+# - Increased value of SecPcreMatchLimit and SecPcreMatchLimitRecursion to 500000 each in
+#   /etc/modsecurity/modsecurity.conf to avoid "Execution error - PCRE limits exceeded (-8)" errors.
+#
+# v85
 # - Added SSL to the server config, using certificates from Let's Encrypt. Set with SSLSW=1.
 # - Further improved fail2ban configuration.
 # - Vastly increased number of bad bots detected by apache-badbots module.
@@ -185,27 +193,27 @@ SCRIPTNAME="cqpweb-instabox.sh"
 ################################################################################
 
 # SYSTEM CONFIGURATION
-     UPGRADEOS=9    # Upgrade the OS and all its software packages to the latest versions.
-   CONFIGSHELL=9    # Change default shell from dash to bash. Prevents certain errors.
-    CONFIGBASH=2    # Configure .bashrc with some useful things.
-      CONFIGTZ=9    # Set up time zone.
- CONFIGCONSOLE=9    # Configure the console's encoding, fonts, etc.
-CONFIGKEYBOARD=9    # Configure the console's keyboard
-CONFIGUBUCLOUD=9    # UBUNTU LIVE SERVER 18.04 ONLY: Remove certain cloud-specific components.
-    CONFIGHOST=9    # UBUNTU LIVE SERVER 18.04 ONLY: Configure host information to fix bug.
+     UPGRADEOS=0    # Upgrade the OS and all its software packages to the latest versions.
+   CONFIGSHELL=0    # Change default shell from dash to bash. Prevents certain errors.
+    CONFIGBASH=0    # Configure .bashrc with some useful things.
+      CONFIGTZ=0    # Set up time zone.
+ CONFIGCONSOLE=0    # Configure the console's encoding, fonts, etc.
+CONFIGKEYBOARD=0    # Configure the console's keyboard
+CONFIGUBUCLOUD=0    # UBUNTU LIVE SERVER 18.04 ONLY: Remove certain cloud-specific components.
+    CONFIGHOST=0    # UBUNTU LIVE SERVER 18.04 ONLY: Configure host information to fix bug.
 
 # SSH CONFIGURATION
-SSHGENNEWKEYS=9     # Generate new SSH keys and moduli. The latter will take around an hour.
-     SSHPWDSW=2     # Install and configure SSH WITH PASSWORD ACCESS on the server, to allow remote administration.
+SSHGENNEWKEYS=0     # Generate new SSH keys and moduli. The latter will take around an hour.
+     SSHPWDSW=0     # Install and configure SSH WITH PASSWORD ACCESS on the server, to allow remote administration.
 # WARNING: Do not run SSHPWDSW and SSHKEYSW together! You must copy your SSH public key to the server in between!
-     SSHKEYSW=2     # Reconfigure the SSH server for access using a PUBLIC KEY instead of a PASSWORD. A true MUST for security!
+     SSHKEYSW=0     # Reconfigure the SSH server for access using a PUBLIC KEY instead of a PASSWORD. A true MUST for security!
                     #    Do this only AFTER installing the SSH server with password access and uploading your pubic key to the server!
 
 # MAIN SOFTWARE SETS
-NECESSARYSW=2       # Install software necessary for the server to work.
-   USEFULSW=2       # Install software considered useful (though optional).
-   SERVERSW=2       # Install server software (monitoring, security and such).
- VIRTUALSRV=2       # Set to 1 for virtual servers (VPS). This uninstalls certain hardware-related software.
+NECESSARYSW=0       # Install software necessary for the server to work.
+   USEFULSW=0       # Install software considered useful (though optional).
+   SERVERSW=0       # Install server software (monitoring, security and such).
+ VIRTUALSRV=0       # Set to 1 for virtual servers (VPS). This uninstalls certain hardware-related software.
 
 # CWB+CQPWEB+CORPORA
   CQPCWBRELEASE=0                           # Install a specific SubVersion release of CWB and CQPweb. "0" downloads latest version.
@@ -262,18 +270,18 @@ CUSTOMIZEFONTS=0             # Modify CSS files in order to use a user-specified
 TURNDEBUGON=9                # Set CQPweb to print debug messages.
 
 # CORPORA
-CORPDICKENS=9       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
+CORPDICKENS=0       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
 
 # ADDITIONAL SYSTEM SOFTWARE AND SYSTEM OPTIONS
-     MAILSW=9       # Install and configure the Postfix mail server.
- SECURITYSW=2       # Install general security software. Highly recommended for server install.
-      UFWSW=2       # Install and configure Universal FireWall (UFW). Important for security!
-      UPSSW=9       # Install and configure software for APC BackUPS Pro 900 UPS (051d:0002)
+     MAILSW=0       # Install and configure the Postfix mail server.
+ SECURITYSW=0       # Install general security software. Highly recommended for server install.
+      UFWSW=0       # Install and configure Universal FireWall (UFW). Important for security!
+      UPSSW=0       # Install and configure software for APC BackUPS Pro 900 UPS (051d:0002)
  FAIL2BANSW=0       # Install and configure fail2ban. Important for security! But install this last, after you've confirmed everything works.
 WHITELISTEDIPS="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16" # IP addresses to whitelist (never ban) in fail2ban. Separate with space.
-APACHESECSW=2       # Install the Apache mod_security and mod_evasive security modules.
-DISABLEIPV6=2       # Completely disable ipv6 support in the host OS.
-      SSLSW=2       # Configure server to use SSL (HTTPS) with a certificate from Let's Encrypt.
+APACHESECSW=0       # Install the Apache mod_security and mod_evasive security modules.
+DISABLEIPV6=0       # Completely disable ipv6 support in the host OS.
+      SSLSW=0       # Configure server to use SSL (HTTPS) with a certificate from Let's Encrypt.
 
 # ADDITIONAL LINGUISTIC SOFTWARE: HEADLESS SERVER OR GUI
 FREELINGSW=0             # Install FreeLing tagger.
@@ -1193,7 +1201,7 @@ if [[ "$CONFIGUBUCLOUD" = 1 ]]; then
         # RECONFIGURE UBUNTU CLOUD SETTINGS
 
         # DISABLE CLOUD-INIT
-        sudo echo 'datasource_list: [ None ]' | sudo -s tee /etc/cloud/cloud.cfg.d/90_dpkg.cfgg >/dev/null 2>&1
+        sudo echo 'datasource_list: [ None ]' | sudo -s tee /etc/cloud/cloud.cfg.d/90_dpkg.cfg >/dev/null 2>&1
 
         # REMOVE CLOUD-INIT
         sudo apt update -y              >/dev/null 2>&1
@@ -1893,7 +1901,7 @@ if [[ "$VIRTUALSRV" = 1 ]]; then
 
     # REMOVE UNNECESSARY OR RISKY SOFTWARE
     # This is done one-package-per-command because otherwise if a single program
-    # is not installed, it will cause the removal of all the others to fail. +++++
+    # is not installed, it will cause the removal of all the others to fail.
     sudo apt remove --purge -y -f fancontrol thermald smartmontools lm-sensors powertop hddtemp psensor libsensors4 exfat-fuse exfat-utils
     sudo apt autoremove -y
 
@@ -2308,7 +2316,7 @@ if [[ "$CQPWEBSW" = 1 ]]; then
 
         sudo apt purge -y mysql*
 
-        # DOWNLOAD NEW MYSQL VERSION +++++
+        # DOWNLOAD NEW MYSQL VERSION
         sudo mkdir -p /tmp/mysql8
         sudo chmod ugo=rwx /tmp/mysql8
         cd /tmp/mysql8 || exit
@@ -2351,7 +2359,7 @@ if [[ "$CQPWEBSW" = 1 ]]; then
         sudo usermod -G www-data -a "${USER}"
     fi
 
-    # SET CERTAIN FOLDER PERMISSIONS AND GROUPS +++++
+    # SET CERTAIN FOLDER PERMISSIONS AND GROUPS
     sudo chown -R www-data:www-data /var/www
     sudo chmod -R u=rwX,g=rwXs,o=rX /var/www
 
@@ -2393,7 +2401,7 @@ if [[ "$CQPWEBSW" = 1 ]]; then
         fi
     fi
 
-    # CHANGE PERMISSIONS ON WEB SERVER DIRECTORY +++++
+    # CHANGE PERMISSIONS ON WEB SERVER DIRECTORY
     sudo chown -R www-data:www-data /var/www/html/cqpweb
     sudo chmod -R u=rwX,g=rwXs,o=rX /var/www/html/cqpweb
 
@@ -2402,7 +2410,7 @@ if [[ "$CQPWEBSW" = 1 ]]; then
     sudo chmod -R u=rwX,g=rwXs,o=rX /var/www
     sudo chmod -R u=rwX,g=rwXs,o=rX /usr/lib/cgi-bin
 
-    # CREATE CQPWEB SUBDIRECTORIES AND SET GROUP AND PERMISSIONS +++++
+    # CREATE CQPWEB SUBDIRECTORIES AND SET GROUP AND PERMISSIONS
     sudo mkdir -p ${COMMONCQPWEBDIR}/{data,registry,cache,upload}
     sudo chown www-data:www-data ${COMMONCQPWEBDIR}/*
     sudo chmod -R u=rwX,g=rwXs,o=rX ${COMMONCQPWEBDIR}/*
@@ -4642,9 +4650,9 @@ if [[ "$APACHESECSW" = 1 ]]; then
 	<IfModule mod_evasive20.c>
 	     DOSHashTableSize    3097
 	     DOSPageCount        5
-	     DOSSiteCount        50
-	     DOSPageInterval     1
-	     DOSSiteInterval     1
+	     DOSSiteCount        60
+	     DOSPageInterval     2
+	     DOSSiteInterval     2
 	     DOSBlockingPeriod   60
 	${EVASIVE_WHITELISTEDIPS}
 	    DOSEmailNotify      ${ADMINMAILADDR}
@@ -4669,6 +4677,59 @@ EOF
     sudo chown www-data:www-data /var/log/apache2/modsec_audit.log
     sudo chmod 660 /var/log/apache2/modsec_audit.log
 
+
+    # CREATE WHITELIST
+
+    # Read values into new variable
+    MODSEC_WHITELISTIPS="${WHITELISTEDIPS}"
+
+    # Eliminate common reserved addresses (there are actually a ton more)
+    MODSEC_WHITELISTIPS=$(echo "${MODSEC_WHITELISTIPS}" | sed -r 's/(^| )0\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}[\/]*[0-9]{0,3}//gm')
+    MODSEC_WHITELISTIPS=$(echo "${MODSEC_WHITELISTIPS}" | sed -r 's/(^| )10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}[\/]*[0-9]{0,3}//gm')
+    MODSEC_WHITELISTIPS=$(echo "${MODSEC_WHITELISTIPS}" | sed -r 's/127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}[\/]*[0-9]{0,3}//gm')
+    MODSEC_WHITELISTIPS=$(echo "${MODSEC_WHITELISTIPS}" | sed -r 's/192\.168\.[0-9]{1,3}\.[0-9]{1,3}[\/]*[0-9]{0,3}//gm')
+
+    # Remove multiple spaces and string-initial space
+    MODSEC_WHITELISTIPS=$(echo "${MODSEC_WHITELISTIPS}" | sed -r 's/[ ]+/ /gm')
+    MODSEC_WHITELISTIPS=$(echo "${MODSEC_WHITELISTIPS}" | sed -r 's/^ //gm')
+
+    # Replace spaces with newlines
+    MODSEC_WHITELISTIPS=$(echo "${MODSEC_WHITELISTIPS}" | sed -r 's/ /\n/gm')
+
+    # Reset rule id counter
+    COUNTER=0
+
+    # Iterate over each IP address contained in the whitelist, create the appropriate rule
+    # using a counter for the 'id', and append it to /etc/modsecurity/modsecurity.conf
+    echo "$MODSEC_WHITELISTIPS" | while read IP; do
+
+        # Increment counter
+        COUNTER=$(( $COUNTER + 1 ))
+
+        # Create rule for current IP address and counter value
+        RULE="SecRule REMOTE_ADDR \"@contains $IP\" \"id:${COUNTER},phase:1,nolog,allow,ctl:ruleEngine=Off\""
+        echo "${RULE}"
+
+        # Append rul to mod_security config file.
+        echo -e "${RULE}" | sudo tee -a /etc/modsecurity/modsecurity.conf >/dev/null 2>&1
+
+    done
+
+    # SET HIGHER VALUES FOR TWO VARIABLES IN ORDER TO PREVENT "EXECUTION ERROR - PCRE LIMITS EXCEEDED (-8)" ERRORS
+    configLine "^[# ]*SecPcreMatchLimit .*$"  "SecPcreMatchLimit 500000"  /etc/modsecurity/modsecurity.conf >/dev/null 2>&1
+    configLine "^[# ]*SecPcreMatchLimitRecursion.*$"  "SecPcreMatchLimitRecursion 500000"  /etc/modsecurity/modsecurity.conf >/dev/null 2>&1
+
+
+    # DISABLE CERTAIN MOD_SECURITY RULES THAT TRIGGER FALSE POSITIVES WITH PARANOIA LEVEL 2
+    # This is VERY important if you use modsec with paranoia level 2 -- otherwise, many CQPweb operations will fail!
+    echo "SecRuleRemoveById 920230" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
+    echo "SecRuleRemoveById 942370" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
+    echo "SecRuleRemoveById 951120" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
+    echo "SecRuleRemoveById 951230" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
+    echo "SecRuleRemoveById 951260" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
+    echo "SecRuleRemoveById 980140" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
+
+
     # RESTART APACHE SERVER
     sudo systemctl restart apache2.service
 
@@ -4683,10 +4744,12 @@ EOF
     # CLONE OWASP CRS GITHUB
     sudo git clone https://github.com/SpiderLabs/owasp-modsecurity-crs.git /usr/share/modsecurity-crs
 
+
     # CREATE PERSONAL CONFIG FILE USING TEMPLATE
     sudo cp /usr/share/modsecurity-crs/crs-setup.conf.example /usr/share/modsecurity-crs/crs-setup.conf
 
-    # CONFIGURE MOD_SECURITY TO USE OWASP CRS
+
+    ##### CONFIGURE MOD_SECURITY TO USE OWASP CRS #####
 
     # If backup exists, restore it before proceeding. otherwise, make backup
     if [[ -f "/etc/apache2/mods-enabled/security2.conf.BAK" ]]; then
