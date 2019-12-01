@@ -3,8 +3,8 @@
 SCRIPTNAME="cqpweb-instabox.sh"
 # AUTHOR:   Scott Sadowsky
 # WEBSITE:  www.sadowsky.cl
-# DATE:     2019-11-15
-# VERSION:  86
+# DATE:     2019-11-25
+# VERSION:  87
 # LICENSE:  GNU GPL v3
 
 # DESCRIPTION: This script takes an install of certain versions of Ubuntu or Debian and sets up Open
@@ -25,10 +25,18 @@ SCRIPTNAME="cqpweb-instabox.sh"
 
 # CHANGE LOG:
 #
+# v87
+# - Added more exceptions to /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf to
+#   prevent false positives when using CQPweb. Seems mod_security flags a lot of what CQPweb does as SQL exploits.
+# - Added option to customize the titles of CQPweb pages. Set with CUSTPPGTITLES=1.
+# - Extended the customizations done to the CQPweb signup page. Set with CUSTPGSIGNUP=1.
+# - Added option to use a custom URL for user's own CQP syntax tutorial page. Set with CUSTCQPSYNTUTURL=1.
+#
 # v86
+# - Added option to harden MySQL. Run script with `HARDENMYSQL=1` to use it.
 # - Refined mod_evasive configuration.
 # - Added a series of rule exceptions to mod_security to prevent false positives (and thus
-#   breakages and unwanted bans) when using various CQPweb functions at paranoia level 2.
+#   breakages and bans) when using various CQPweb functions at paranoia level 2.
 # - Added whitelisted IPs to mod_security configuration
 # - Increased value of SecPcreMatchLimit and SecPcreMatchLimitRecursion to 500000 each in
 #   /etc/modsecurity/modsecurity.conf to avoid "Execution error - PCRE limits exceeded (-8)" errors.
@@ -176,15 +184,13 @@ SCRIPTNAME="cqpweb-instabox.sh"
 # v59 and below
 # - Pre-release development.
 
-# TODO:
-# - PHP can now send e-mails. But fail2ban and other system utils can't. This needs fixed.
-# - Configure server to use HTTPS and get SSL certificate automatically from somewhere.
 
 # NOTE:
 # - To get the mail server working, the following may be necessary:
 #   · Replace the entry in /etc/hosts with the following:
 #     127.0.0.1       localhost.localdomain localhost other_hostname fully_qualified-domain_name.com
 #   · Uninstall postfix, and install sendmail and mailutils.
+#   · Uninstall sendmail and then reinstall it.
 
 ################################################################################
 # SCRIPT CONFIGURATION
@@ -225,7 +231,8 @@ COMMONCQPWEBDIR="/usr/local/share/cqpweb"   # Common base dir for CQPweb. No tra
 CWB=0                    # Install CORPUS WORKBENCH (CWB)
   CWBVER="latest"        # Version of CWB to install: 'latest' or 'stable' (WARNING: Currently, only 'latest' is supported).
   CWBPLATFORM="linux-64" # Platform to compile CWPweb for. OPTIONS: cygwin, darwin, darwin-64, darwin-brew, darwin-port-core2,
-                         #   darwin-universal, linux, linux-64, linux-opteron, mingw-cross, mingw-native, solaris, unix
+                         #   darwin-universal, linux, linux-64, linux-opteron, mingw-cross, mingw-native, solaris, unix.
+                         #   Keep in mind that this script has not been tested on many of these systems.
   CWBSITE="standard"     # Location for binary installation. 'standard'=/usr/local tree; 'beta-install'=/usr/local/cwb-<VERSION>.
   CWBNUKEOLD=0           # Delete previously downloaded CWB files before downloading and installing again? Not normally needed!
 
@@ -237,7 +244,7 @@ ADMINUSER="YOUR_INFO_HERE"  # CQPweb administrator usernames. Separate multiple 
                             # want to manually update this as new versions come out.
   DBUSER="cqpweb"           # Username for MYSQL database and webuser
   DBPWD="cqpweb"            # Password for MYSQL database and webuser
-  CQPMAKENEWDB=1            # Delete existing database and make a new one? (NECESSARY for new installs; normally undesirable otherwise).
+  CQPMAKENEWDB=0            # Delete existing database and make a new one? (NECESSARY for new installs; normally undesirable otherwise).
   CQPWEBNUKEOLD=0           # Delete previously downloaded CQPweb files before downloading and installing again? Not normally needed!
 
 # CQPWEB OPTIONS AND CUSTOMIZATIONS.
@@ -251,9 +258,13 @@ IMAGEUPLD=0                  # Upload specified image to use as top left/right g
 FAVICONUPLD=0                # Upload favicon.ico to root of website?
   FAVICONSOURCE="YOUR_INFO_HERE" # Source URL of favicon.ico.
   FAVICONTARGET="/var/www/html/cqpweb/" # Destination directory of favicon.ico.
-CREATECQPWEBSCRIPTS=2        # Create a series of useful scripts in ~/bin.
+CREATECQPWEBSCRIPTS=0        # Create a series of useful scripts in ~/bin.
 CUSTPGSIGNUP=0               # Customize CQPweb signup page. Users will definitely want to customize this customization.
-CUSTPGMENUGRAPHIC=0          # Replaces the word "Menu" in the T/L cell of most pages with a graphic ('IMAGESOURCE2', above) and optional URL.
+CUSTPPGTITLES=0              # Customize the titles on CQPweb web pages.
+  NEWPAGETITLE="Corpora.pro" # New page title. Will be processed by Perl, so escape what needs escaped.
+CUSTCQPSYNTUTURL=0           # Change the CQP Syntax tutorial link, for using your own tutorial.
+  CQPSYNTUTURL="https://www.corpora.pro/userpages/cqp-syntax-tutorial.html" # URL for your own CQP syntax tutorial. Will be processed by Perl, so escape as needed.
+CUSTPGMENUGRAPHIC=1          # Replaces the word "Menu" in the T/L cell of most pages with a graphic ('IMAGESOURCE2', above) and optional URL.
   MENUURLUSER="YOUR_INFO_HERE"  # URL to assign to T/L graphic on user home pages.
   MENUURLQUERY="YOUR_INFO_HERE" # URL to assign to T/L graphic on query pages.
   MENUURLADMIN="YOUR_INFO_HERE" # URL to assign to T/L graphic on admin pages.
@@ -267,21 +278,25 @@ CUSTOMIZEFONTS=0             # Modify CSS files in order to use a user-specified
                              # [MONO-SMALL]: Inconsolata, Ubuntu Mono
                              # [MONO-MID]: Oxygen Mono, Space Mono, Overpass Mono, Fira Mono, IBM Plex Mono, Source Code Pro
                              # [MONO-UGLY]test Anonymous Pro, B612 Mono, Cousine, PT Mono
-TURNDEBUGON=9                # Set CQPweb to print debug messages.
+TURNDEBUGON=0                # Set CQPweb to print debug messages.
 
 # CORPORA
 CORPDICKENS=0       # Install the Dickens SAMPLE CORPUS. Requires CWB already be installed.
 
-# ADDITIONAL SYSTEM SOFTWARE AND SYSTEM OPTIONS
+# ADDITIONAL SERVER SOFTWARE AND CONFIGURATION
      MAILSW=0       # Install and configure the Postfix mail server.
+      UPSSW=0       # Install and configure software for APC BackUPS Pro 900 UPS (051d:0002)
+DISABLEIPV6=0       # Completely disable ipv6 support in the host OS.
+
+
+# SECURITY SOFTWARE AND SYSTEM HARDENING
  SECURITYSW=0       # Install general security software. Highly recommended for server install.
       UFWSW=0       # Install and configure Universal FireWall (UFW). Important for security!
-      UPSSW=0       # Install and configure software for APC BackUPS Pro 900 UPS (051d:0002)
  FAIL2BANSW=0       # Install and configure fail2ban. Important for security! But install this last, after you've confirmed everything works.
 WHITELISTEDIPS="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16" # IP addresses to whitelist (never ban) in fail2ban. Separate with space.
 APACHESECSW=0       # Install the Apache mod_security and mod_evasive security modules.
-DISABLEIPV6=0       # Completely disable ipv6 support in the host OS.
       SSLSW=0       # Configure server to use SSL (HTTPS) with a certificate from Let's Encrypt.
+HARDENMYSQL=0       # Harden the MySQL database. CPQweb must already be installed to use this.
 
 # ADDITIONAL LINGUISTIC SOFTWARE: HEADLESS SERVER OR GUI
 FREELINGSW=0             # Install FreeLing tagger.
@@ -1725,6 +1740,9 @@ if [[ "$SERVERSW" = 1 ]]; then
         sudo apt install -y --install-recommends mytop
     fi
 
+    # CONFIGURE TMUX TO DISPLAY 256 COLORS
+    echo "set -g default-terminal \"screen-256color\"" > ~/.tmux.conf
+
 
     ####################
     # DISABLE ROOT ACCOUNT. TO ENABLE IT AGAIN: sudo passwd -u root
@@ -2021,12 +2039,62 @@ if [[ "$SSLSW" = 1 ]]; then
 
     echo "${CGRN}${BLD}==========> Installation of SSL (HTTPS) with Let's Encrypt certificate completed.${RST}"
         echo ""
-    else
+else
         echo "${CORG}${BLD}==========> Skipping installation of SSL (HTTPS) with Let's Encrypt certificate...${RST}"
-    fi
 fi
 
 
+########################################
+# HARDEN MYSQL
+########################################
+if [[ "$HARDENMYSQL" = 1 ]]; then
+
+    echo ""
+    echo "${CLBL}${BLD}==========> Hardening MySQL...${RST}"
+
+    # RUN HARDENING SCRIPT
+    sudo mysql_secure_installation
+
+
+#     # HARDEN VIA CONFIG FILE
+#
+#     # IF BACKUP EXISTS, RESTORE IT BEFORE PROCEEDING. OTHERWISE, MAKE BACKUP
+#     if [[ -f "/etc/mysql/my.cnf.BAK" ]]; then
+#         # RESTORE BACKUP
+#         sudo rm /etc/mysql/my.cnf
+#         sudo cp /etc/mysql/my.cnf.BAK /etc/mysql/my.cnf
+#     else
+#         # MAKE BACKUP
+#         sudo cp /etc/mysql/my.cnf /etc/mysql/my.cnf.BAK
+#     fi
+#
+#     # CHANGE CONFIG OPTIONS
+#
+#     # This blocks users who get more than 25 connection errors. To unblock them, run
+#     # `mysqladmin flush-hosts` (see https://dev.mysql.com/doc/refman/5.7/en/mysqladmin.html).
+#     configLine "^[# ]*max_connect_errors.*$"  "max_connect_errors = 25" /etc/mysql/my.cnf >/dev/null 2>&1
+#     configLine "^[# ]*XXXXX.*$"  "XXXXX" /etc/mysql/my.cnf >/dev/null 2>&1
+#     configLine "^[# ]*XXXXX.*$"  "XXXXX" /etc/mysql/my.cnf >/dev/null 2>&1
+#     configLine "^[# ]*XXXXX.*$"  "XXXXX" /etc/mysql/my.cnf >/dev/null 2>&1
+#     configLine "^[# ]*XXXXX.*$"  "XXXXX" /etc/mysql/my.cnf >/dev/null 2>&1
+#
+#     local-infile=0
+#
+#     [mysqld]
+#     skip-show-database
+#
+#     bind-address = 127.0.0.1
+#
+#
+
+
+
+
+    echo "${CGRN}${BLD}==========> Hardening of MySQL completed.${RST}"
+    echo ""
+else
+        echo "${CORG}${BLD}==========> Skipping hardening of MySQL...${RST}"
+fi
 
 
 
@@ -2302,9 +2370,10 @@ if [[ "$CQPWEBSW" = 1 ]]; then
     ####################
     # NUKE PREVIOUSLY INSTALLED CQPWEB FILES IF DESIRED
     ####################
-    if [[ "$CQPWEBNUKEOLD" = 1 ]]; then
+    if [[ "${CQPWEBNUKEOLD}" = 1 ]]; then
         sudo rm -rf /var/www/html/cqpweb
     fi
+
 
     ####################
     # REMOVE ANY CURRENT MYSQL AND INSTALL MYSQL 8
@@ -2392,6 +2461,7 @@ if [[ "$CQPWEBSW" = 1 ]]; then
     else
         # DOWNLOAD EVERYTHING ANEW IF DIRECTORY DOESN'T EXIST
         sudo mkdir -p cqpweb
+
         if [[ "$CQPCWBRELEASE" = 0 ]]; then
             # DOWNLOAD LATEST RELEASE
             sudo svn checkout https://svn.code.sf.net/p/cwb/code/gui/cqpweb/branches/3.2-latest cqpweb
@@ -2404,10 +2474,7 @@ if [[ "$CQPWEBSW" = 1 ]]; then
     # CHANGE PERMISSIONS ON WEB SERVER DIRECTORY
     sudo chown -R www-data:www-data /var/www/html/cqpweb
     sudo chmod -R u=rwX,g=rwXs,o=rX /var/www/html/cqpweb
-
-#     sudo chmod -R ug=rws /var/www
-#     sudo chmod -R ug=rws /usr/lib/cgi-bin
-    sudo chmod -R u=rwX,g=rwXs,o=rX /var/www
+#     sudo chmod -R u=rwX,g=rwXs,o=rX /var/www
     sudo chmod -R u=rwX,g=rwXs,o=rX /usr/lib/cgi-bin
 
     # CREATE CQPWEB SUBDIRECTORIES AND SET GROUP AND PERMISSIONS
@@ -2491,7 +2558,7 @@ if [[ "$CQPWEBSW" = 1 ]]; then
 	<Directory "/var/www/html/cqpweb">
 	    AllowOverride None
 	    Require all granted
-	    Options FollowSymlinks
+	    Options -Indexes +FollowSymlinks
 	</Directory>
 
 EOF
@@ -2579,6 +2646,7 @@ EOF
     fi
 
     # CREATE CONFIG.INC.PHP FILE
+    # YOU WILL DEFINITELY WANT TO CUSTOMIZE THIS TO FIT YOUR NEEDS!
     sudo tee /var/www/html/cqpweb/lib/config.inc.php <<- EOF >/dev/null 2>&1
 	<?php
 
@@ -2654,7 +2722,7 @@ EOF
 	 /*\$css_path_for_adminpage          =   ;                                */
 	 /*\$css_path_for_userpage           =   ;                                */
 	 \$homepage_use_corpus_categories  = false;
-	 \$homepage_welcome_message        = "YOUR_INFO_HERE";
+	 \$homepage_welcome_message        = "Corpora.pro<br/>Your source for fine Chilean corpora<br/><br/>Scott Sadowsky";
 	 \$homepage_logo_left              = ;
 	 \$homepage_logo_right             = "css/img/ocwb-logo.transparent.gif";
 	 \$searchpage_corpus_name_suffix   = " · Powered by CQPweb";
@@ -3371,15 +3439,21 @@ else
 fi
 
 
-########################################
+##################################################
 # CUSTOMIZE CERTAIN CQPWEB WEB PAGES
-########################################
+##################################################
+
+##############################
+# CUSTOMIZE SIGNUP PAGE
+##############################
 if [[ "${CUSTPGSIGNUP}" = 1 ]]; then
 
     echo ""
     echo "${CLBL}${BLD}==========> Customizing CQPWEB SIGN UP PAGE...${RST}"
 
-    ########## CUSTOMIZE /lib/useracct-forms.php
+    ########################################
+    # CUSTOMIZE /lib/useracct-forms.php
+    ########################################
     CURRFILE="/var/www/html/cqpweb/lib/useracct-forms.php"
 
     # Make backup
@@ -3390,10 +3464,59 @@ if [[ "${CUSTPGSIGNUP}" = 1 ]]; then
     # CUSTOMIZE FILES
     sudo perl -i -p0e 's/you should use it to sign up<\/strong>\.[\n\t ]+?<\/p>[\n\t ]+?<p .+?>[\n\t ]+?<.+?>[\n\t ]+?This is because your access/you should use it to sign up<\/strong>. This is because your access/gms' "${CURRFILE}"
 
+    sudo perl -i -p0e 's/We will send a verification message to this email address/<strong>We will send a verification message to this email address<\/strong>/gms' "${CURRFILE}"
+
+    sudo perl -i -p0e 's/<strong>double-check for typing errors<\/strong>/double-check for typing errors/gms' "${CURRFILE}"
+
+    sudo perl -i -p0e 's/in that email message\!<\/em>/in the verification email.<\/em> <strong>Make sure to check your SPAM folder for it!<\/strong>/gms' "${CURRFILE}"
+
+    sudo perl -i -p0e 's/Prefer not to specify/SELECT COUNTRY/gms' "${CURRFILE}"
+
     sudo perl -i -p0e 's/<tr>[\n\t ]+?<td class="concordgrey" colspan="2">[\n\t ]+?<p class="spacer">&nbsp;<\/p>[\n\t ]+?<p>[\n\t ]+?The following three questions.+?<\/tr>/\n/gms' "${CURRFILE}"
 
     echo "${CGRN}${BLD}==========> CQPWEB SIGN UP PAGE customization finished.${RST}"
     echo ""
+
+fi
+
+
+##############################
+# CUSTOMIZE PAGE TITLES
+##############################
+if [[ "${CUSTPPGTITLES}" = 1 ]]; then
+
+    echo ""
+    echo "${CLBL}${BLD}==========> Customizing CQPWEB PAGE TITLES...${RST}"
+
+    # userhome.php
+    sudo perl -i -p0e "s/CQPweb User Page/${NEWPAGETITLE} User Page/gms" /var/www/html/cqpweb/lib/userhome.php
+
+    # mainhome.php
+    sudo perl -i -p0e "s/CQPweb Main Page/${NEWPAGETITLE} Main Page/gms" /var/www/html/cqpweb/lib/mainhome.php
+
+    # adminhome.php
+    sudo perl -i -p0e "s/CQPweb Admin Control Panel/${NEWPAGETITLE} Admin Control Panel/gms" /var/www/html/cqpweb/lib/adminhome.php
+
+
+    echo "${CGRN}${BLD}==========> CQPWEB CQPWEB PAGE TITLE customization finished.${RST}"
+    echo ""
+
+fi
+
+
+##############################
+# CUSTOMIZE CQPWEB SYNTAX TUTORIAL LINK
+##############################
+if [[ "${CUSTCQPSYNTUTURL}" = 1 ]]; then
+
+    echo ""
+    echo "${CLBL}${BLD}==========> Customizing CQPWEB SYNTAX TUTORIAL LINK...${RST}"
+
+    sudo perl -i -p0e "s|http://cwb\.sourceforge\.net/files/CQP_Tutorial/|${CQPSYNTUTURL}|gms" /var/www/html/cqpweb/lib/query-forms.php
+
+    echo "${CGRN}${BLD}==========> CQPWEB SYNTAX TUTORIAL LINK customization finished.${RST}"
+    echo ""
+
 fi
 
 
@@ -4723,11 +4846,19 @@ EOF
     # DISABLE CERTAIN MOD_SECURITY RULES THAT TRIGGER FALSE POSITIVES WITH PARANOIA LEVEL 2
     # This is VERY important if you use modsec with paranoia level 2 -- otherwise, many CQPweb operations will fail!
     echo "SecRuleRemoveById 920230" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
+    echo "SecRuleRemoveById 920350" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
+    echo "SecRuleRemoveById 921151" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
+    echo "SecRuleRemoveById 942120" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
+    echo "SecRuleRemoveById 942130" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
+    echo "SecRuleRemoveById 942260" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
     echo "SecRuleRemoveById 942370" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
+    echo "SecRuleRemoveById 942430" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
     echo "SecRuleRemoveById 951120" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
     echo "SecRuleRemoveById 951230" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
     echo "SecRuleRemoveById 951260" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
     echo "SecRuleRemoveById 980140" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
+    echo "SecRuleRemoveById 941340" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
+    echo "SecRuleRemoveById 942340" | sudo tee -a /usr/share/modsecurity-crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf  >/dev/null 2>&1
 
 
     # RESTART APACHE SERVER
